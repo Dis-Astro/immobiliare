@@ -254,7 +254,7 @@ async def chiudi_contratto(
     current_user: UserInDB = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
-    """Chiudi contratto."""
+    """Chiudi contratto e libera l'unità."""
     if current_user.ruolo == UserRole.LETTURA:
         raise HTTPException(status_code=403, detail="Permessi insufficienti")
     
@@ -263,6 +263,17 @@ async def chiudi_contratto(
         raise HTTPException(status_code=404, detail="Contratto non trovato")
     
     await db.contratti.update_one({"id": contratto_id}, {"$set": {"stato": "chiuso"}})
+    
+    # Libera l'unità
+    await db.unita.update_one(
+        {"id": existing["unita_id"]},
+        {"$set": {
+            "stato": "libera",
+            "contratto_attivo_id": None,
+            "affittuario_nome": None
+        }}
+    )
+    
     await log_audit(db, "contratti", contratto_id, "update", existing, {"stato": "chiuso"}, current_user.id)
     
     return {"message": "Contratto chiuso"}
