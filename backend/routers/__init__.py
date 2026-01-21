@@ -1,0 +1,19 @@
+# Routers Package
+from .auth import router as auth_router
+from .users import router as users_router
+from .soggetti import router as soggetti_router
+from .immobili import router as immobili_router
+from .unita import router as unita_router
+from .contratti import router as contratti_router
+from .rate import router as rate_router
+from .documenti import router as documenti_router
+from .valutazioni import router as valutazioni_router
+from .verbali import router as verbali_router
+from .variazioni import router as variazioni_router
+from .spese import router as spese_router
+from .interventi import router as interventi_router
+from .notifiche import router as notifiche_router
+from .mappa import router as mappa_router
+from .reports import router as reports_router
+from .dashboard import router as dashboard_router
+from .audit import router as audit_router
