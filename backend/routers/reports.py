@@ -1,26 +1,198 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from typing import List, Optional
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from weasyprint import HTML, CSS
+from jinja2 import Environment, FileSystemLoader
+from pathlib import Path
 import io
+import pandas as pd
 
 from models.user import UserInDB, UserRole
 from routers.auth import get_current_user, get_db
 
 router = APIRouter(prefix="/reports", tags=["Report"])
 
+# Templates directory
+TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "pdf"
 
-@router.get("/pagamenti")
-async def report_pagamenti(
-    periodo_da: Optional[str] = None,  # YYYY-MM
-    periodo_a: Optional[str] = None,
-    immobile_id: Optional[str] = None,
-    formato: str = Query("json", enum=["json", "csv", "excel"]),
+# Jinja2 environment
+jinja_env = Environment(
+    loader=FileSystemLoader(str(TEMPLATES_DIR)),
+    autoescape=True
+)
+
+# Default CSS for PDF
+DEFAULT_CSS = """
+@page {
+    size: A4;
+    margin: 2cm;
+    @top-center { content: "EstateWise"; font-size: 10pt; color: #666; }
+    @bottom-center { content: "Pagina " counter(page) " di " counter(pages); font-size: 9pt; color: #666; }
+}
+body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #333; }
+h1 { font-size: 20pt; margin-bottom: 0.5em; color: #1a1a2e; }
+h2 { font-size: 16pt; margin-top: 1.5em; margin-bottom: 0.5em; color: #1a1a2e; border-bottom: 1px solid #ddd; padding-bottom: 0.3em; }
+h3 { font-size: 13pt; margin-top: 1em; margin-bottom: 0.3em; color: #333; }
+table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+th, td { padding: 8px 12px; text-align: left; border: 1px solid #ddd; }
+th { background-color: #f5f5f5; font-weight: 600; }
+tr:nth-child(even) { background-color: #fafafa; }
+.header { text-align: center; margin-bottom: 2em; }
+.info-box { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 1em 0; }
+.status-ok { color: #28a745; }
+.status-warning { color: #ffc107; }
+.status-danger { color: #dc3545; }
+.footer { margin-top: 2em; padding-top: 1em; border-top: 1px solid #ddd; font-size: 9pt; color: #666; }
+.signature-area { margin-top: 3em; }
+.signature-box { display: inline-block; width: 45%; text-align: center; }
+.signature-line { border-top: 1px solid #333; margin-top: 50px; padding-top: 5px; }
+"""
+
+
+def generate_pdf(html_content: str) -> bytes:
+    """Generate PDF from HTML using WeasyPrint."""
+    html = HTML(string=html_content)
+    pdf_bytes = html.write_pdf(stylesheets=[CSS(string=DEFAULT_CSS)])
+    return pdf_bytes
+
+
+@router.get("/contratto/{contratto_id}/pdf")
+async def get_contratto_pdf(
+    contratto_id: str,
     current_user: UserInDB = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
-    """Report pagamenti."""
+    """Generate and download contract PDF (fascicolo contratto)."""
+    contratto = await db.contratti.find_one({"id": contratto_id}, {"_id": 0})
+    if not contratto:
+        raise HTTPException(status_code=404, detail="Contratto non trovato")
+    
+    # Fetch related data
+    locatore = await db.soggetti.find_one({"id": contratto["locatore_id"]}, {"_id": 0})
+    affittuario = await db.soggetti.find_one({"id": contratto["affittuario_id"]}, {"_id": 0})
+    unita = await db.unita.find_one({"id": contratto["unita_id"]}, {"_id": 0})
+    immobile = await db.immobili.find_one({"id": unita["immobile_id"]}, {"_id": 0}) if unita else None
+    
+    rate = await db.rate.find({"contratto_id": contratto_id}, {"_id": 0}).sort("periodo", 1).to_list(100)
+    variazioni = await db.variazioni.find({"contratto_id": contratto_id}, {"_id": 0}).to_list(50)
+    documenti = await db.documenti.find({"livello": "contratto", "ref_id": contratto_id}, {"_id": 0}).to_list(50)
+    
+    template = jinja_env.get_template("contratto.html")
+    html_content = template.render(
+        contratto=contratto,
+        locatore=locatore,
+        affittuario=affittuario,
+        unita=unita,
+        immobile=immobile,
+        rate=rate,
+        variazioni=variazioni,
+        documenti=documenti,
+        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+    )
+    
+    pdf_bytes = generate_pdf(html_content)
+    
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=contratto_{contratto['codice_contratto']}.pdf"
+        }
+    )
+
+
+@router.get("/immobile/{immobile_id}/pdf")
+async def get_immobile_pdf(
+    immobile_id: str,
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Generate and download property PDF (scheda immobile)."""
+    immobile = await db.immobili.find_one({"id": immobile_id}, {"_id": 0})
+    if not immobile:
+        raise HTTPException(status_code=404, detail="Immobile non trovato")
+    
+    unita_list = await db.unita.find({"immobile_id": immobile_id}, {"_id": 0}).to_list(100)
+    spese = await db.spese.find({"immobile_id": immobile_id}, {"_id": 0}).sort("data", -1).to_list(50)
+    documenti = await db.documenti.find({"livello": "immobile", "ref_id": immobile_id}, {"_id": 0}).to_list(50)
+    
+    # Get contracts for each unit
+    for u in unita_list:
+        contratti = await db.contratti.find({"unita_id": u["id"]}, {"_id": 0}).to_list(10)
+        u["contratti"] = contratti
+    
+    template = jinja_env.get_template("immobile.html")
+    html_content = template.render(
+        immobile=immobile,
+        unita_list=unita_list,
+        spese=spese,
+        documenti=documenti,
+        totale_spese=sum(s["importo"] for s in spese),
+        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+    )
+    
+    pdf_bytes = generate_pdf(html_content)
+    
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=immobile_{immobile['codice']}.pdf"
+        }
+    )
+
+
+@router.get("/verbale/{verbale_id}/pdf")
+async def get_verbale_pdf(
+    verbale_id: str,
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Generate and download verbale PDF."""
+    verbale = await db.verbali.find_one({"id": verbale_id}, {"_id": 0})
+    if not verbale:
+        raise HTTPException(status_code=404, detail="Verbale non trovato")
+    
+    contratto = await db.contratti.find_one({"id": verbale["contratto_id"]}, {"_id": 0})
+    affittuario = await db.soggetti.find_one({"id": contratto["affittuario_id"]}, {"_id": 0}) if contratto else None
+    locatore = await db.soggetti.find_one({"id": contratto["locatore_id"]}, {"_id": 0}) if contratto else None
+    unita = await db.unita.find_one({"id": contratto["unita_id"]}, {"_id": 0}) if contratto else None
+    immobile = await db.immobili.find_one({"id": unita["immobile_id"]}, {"_id": 0}) if unita else None
+    
+    template = jinja_env.get_template("verbale.html")
+    html_content = template.render(
+        verbale=verbale,
+        contratto=contratto,
+        affittuario=affittuario,
+        locatore=locatore,
+        unita=unita,
+        immobile=immobile,
+        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+    )
+    
+    pdf_bytes = generate_pdf(html_content)
+    
+    codice = contratto['codice_contratto'] if contratto else 'unknown'
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=verbale_{verbale['tipo']}_{codice}.pdf"
+        }
+    )
+
+
+@router.get("/pagamenti/pdf")
+async def get_pagamenti_pdf(
+    periodo_da: Optional[str] = None,
+    periodo_a: Optional[str] = None,
+    immobile_id: Optional[str] = None,
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Generate and download payments report PDF."""
     query = {}
     if periodo_da:
         query["periodo"] = {"$gte": periodo_da}
@@ -31,7 +203,7 @@ async def report_pagamenti(
     
     rate = await db.rate.find(query, {"_id": 0}).sort("periodo", 1).to_list(10000)
     
-    # Filter by immobile if needed
+    # Filter by immobile if specified
     if immobile_id:
         unita_ids = [u["id"] async for u in db.unita.find({"immobile_id": immobile_id}, {"id": 1})]
         contratto_ids = [c["id"] async for c in db.contratti.find({"unita_id": {"$in": unita_ids}}, {"id": 1})]
@@ -43,19 +215,74 @@ async def report_pagamenti(
         if contratto:
             r["contratto_codice"] = contratto.get("codice_contratto")
             affittuario = await db.soggetti.find_one({"id": contratto["affittuario_id"]}, {"nome": 1})
+            r["affittuario_nome"] = affittuario["nome"] if affittuario else "N/A"
+    
+    totale = sum(r["importo"] for r in rate)
+    incassato = sum(r["importo"] for r in rate if r["stato"] == "incassato")
+    in_ritardo = sum(r["importo"] for r in rate if r["stato"] == "in_ritardo")
+    
+    template = jinja_env.get_template("pagamenti.html")
+    html_content = template.render(
+        rate=rate,
+        periodo_da=periodo_da or "inizio",
+        periodo_a=periodo_a or "oggi",
+        totale=totale,
+        incassato=incassato,
+        in_ritardo=in_ritardo,
+        percentuale=round(incassato/totale*100, 1) if totale > 0 else 0,
+        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+    )
+    
+    pdf_bytes = generate_pdf(html_content)
+    
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename=report_pagamenti_{date.today().isoformat()}.pdf"
+        }
+    )
+
+
+@router.get("/pagamenti")
+async def report_pagamenti(
+    periodo_da: Optional[str] = None,
+    periodo_a: Optional[str] = None,
+    immobile_id: Optional[str] = None,
+    formato: str = Query("json", enum=["json", "csv", "excel"]),
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Report pagamenti in JSON, CSV or Excel format."""
+    query = {}
+    if periodo_da:
+        query["periodo"] = {"$gte": periodo_da}
+    if periodo_a:
+        if "periodo" not in query:
+            query["periodo"] = {}
+        query["periodo"]["$lte"] = periodo_a
+    
+    rate = await db.rate.find(query, {"_id": 0}).sort("periodo", 1).to_list(10000)
+    
+    if immobile_id:
+        unita_ids = [u["id"] async for u in db.unita.find({"immobile_id": immobile_id}, {"id": 1})]
+        contratto_ids = [c["id"] async for c in db.contratti.find({"unita_id": {"$in": unita_ids}}, {"id": 1})]
+        rate = [r for r in rate if r["contratto_id"] in contratto_ids]
+    
+    for r in rate:
+        contratto = await db.contratti.find_one({"id": r["contratto_id"]}, {"_id": 0})
+        if contratto:
+            r["contratto_codice"] = contratto.get("codice_contratto")
+            affittuario = await db.soggetti.find_one({"id": contratto["affittuario_id"]}, {"nome": 1})
             r["affittuario_nome"] = affittuario["nome"] if affittuario else ""
-            
-            unita = await db.unita.find_one({"id": contratto["unita_id"]}, {"immobile_id": 1, "codice_unita": 1})
+            unita = await db.unita.find_one({"id": contratto["unita_id"]}, {"immobile_id": 1})
             if unita:
-                r["unita_codice"] = unita["codice_unita"]
                 immobile = await db.immobili.find_one({"id": unita["immobile_id"]}, {"titolo": 1})
                 r["immobile_titolo"] = immobile["titolo"] if immobile else ""
     
     if formato == "json":
-        # Calculate summary
         totale = sum(r["importo"] for r in rate)
         incassato = sum(r["importo"] for r in rate if r["stato"] == "incassato")
-        
         return {
             "periodo": f"{periodo_da or 'inizio'} - {periodo_a or 'oggi'}",
             "totale_rate": len(rate),
@@ -71,15 +298,7 @@ async def report_pagamenti(
         writer = csv.writer(output)
         writer.writerow(["Periodo", "Contratto", "Affittuario", "Immobile", "Importo", "Stato", "Data Incasso"])
         for r in rate:
-            writer.writerow([
-                r["periodo"],
-                r.get("contratto_codice", ""),
-                r.get("affittuario_nome", ""),
-                r.get("immobile_titolo", ""),
-                r["importo"],
-                r["stato"],
-                r.get("data_incasso", "")
-            ])
+            writer.writerow([r["periodo"], r.get("contratto_codice", ""), r.get("affittuario_nome", ""), r.get("immobile_titolo", ""), r["importo"], r["stato"], r.get("data_incasso", "")])
         
         output.seek(0)
         return StreamingResponse(
@@ -89,8 +308,6 @@ async def report_pagamenti(
         )
     
     elif formato == "excel":
-        import pandas as pd
-        
         df = pd.DataFrame([{
             "Periodo": r["periodo"],
             "Contratto": r.get("contratto_codice", ""),
@@ -112,115 +329,27 @@ async def report_pagamenti(
         )
 
 
-@router.get("/immobile/{immobile_id}")
-async def report_immobile(
-    immobile_id: str,
-    formato: str = Query("json", enum=["json", "csv", "excel"]),
-    current_user: UserInDB = Depends(get_current_user),
-    db: AsyncIOMotorDatabase = Depends(get_db)
-):
-    """Report dettagliato immobile."""
-    immobile = await db.immobili.find_one({"id": immobile_id}, {"_id": 0})
-    if not immobile:
-        raise HTTPException(status_code=404, detail="Immobile non trovato")
-    
-    # Get units
-    unita_list = await db.unita.find({"immobile_id": immobile_id}, {"_id": 0}).to_list(100)
-    
-    # Get contracts for each unit
-    for u in unita_list:
-        u["contratti"] = await db.contratti.find({"unita_id": u["id"]}, {"_id": 0}).to_list(100)
-        for c in u["contratti"]:
-            affittuario = await db.soggetti.find_one({"id": c["affittuario_id"]}, {"nome": 1})
-            c["affittuario_nome"] = affittuario["nome"] if affittuario else ""
-    
-    # Get expenses
-    spese = await db.spese.find({"immobile_id": immobile_id}, {"_id": 0}).to_list(1000)
-    totale_spese = sum(s["importo"] for s in spese)
-    
-    # Get income
-    unita_ids = [u["id"] for u in unita_list]
-    contratto_ids = [c["id"] async for c in db.contratti.find({"unita_id": {"$in": unita_ids}}, {"id": 1})]
-    rate_incassate = await db.rate.find({
-        "contratto_id": {"$in": contratto_ids},
-        "stato": "incassato"
-    }, {"_id": 0}).to_list(10000)
-    totale_incassi = sum(r["importo"] for r in rate_incassate)
-    
-    report = {
-        "immobile": immobile,
-        "unita": unita_list,
-        "statistiche": {
-            "totale_unita": len(unita_list),
-            "unita_locate": len([u for u in unita_list if u.get("contratti") and any(c["stato"] == "attivo" for c in u["contratti"])]),
-            "totale_incassi": totale_incassi,
-            "totale_spese": totale_spese,
-            "profit_loss": totale_incassi - totale_spese
-        },
-        "spese_dettaglio": spese[:20]
-    }
-    
-    if formato == "json":
-        return report
-    
-    elif formato == "excel":
-        import pandas as pd
-        
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Immobile sheet
-            pd.DataFrame([immobile]).to_excel(writer, sheet_name="Immobile", index=False)
-            
-            # Unita sheet
-            unita_flat = [{
-                "Codice": u["codice_unita"],
-                "Tipo": u["tipo_immobile"],
-                "MQ": u.get("mq", ""),
-                "Stato": "Locata" if any(c["stato"] == "attivo" for c in u.get("contratti", [])) else "Libera"
-            } for u in unita_list]
-            pd.DataFrame(unita_flat).to_excel(writer, sheet_name="Unita", index=False)
-            
-            # Spese sheet
-            pd.DataFrame(spese).to_excel(writer, sheet_name="Spese", index=False)
-        
-        output.seek(0)
-        return StreamingResponse(
-            output,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            headers={"Content-Disposition": f"attachment; filename=report_{immobile['codice']}.xlsx"}
-        )
-    
-    return report
-
-
 @router.get("/executive")
 async def report_executive(
     anno: Optional[int] = None,
     current_user: UserInDB = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
-    """Report executive per supervisori."""
+    """Executive report for supervisors."""
     if current_user.ruolo != UserRole.SUPERVISORE:
         raise HTTPException(status_code=403, detail="Solo supervisori possono accedere a questo report")
     
     if not anno:
         anno = date.today().year
     
-    # Total properties and units
     tot_immobili = await db.immobili.count_documents({})
     tot_unita = await db.unita.count_documents({})
-    
-    # Active contracts
     contratti_attivi = await db.contratti.count_documents({"stato": "attivo"})
     
-    # Units with active contracts
     contratti = await db.contratti.find({"stato": "attivo"}, {"unita_id": 1}).to_list(10000)
     unita_locate = len(set(c["unita_id"] for c in contratti))
-    
-    # Occupancy rate
     tasso_occupazione = round(unita_locate / tot_unita * 100, 1) if tot_unita > 0 else 0
     
-    # Income by month
     rate = await db.rate.find({"periodo": {"$regex": f"^{anno}"}}, {"_id": 0}).to_list(100000)
     incassi_per_mese = {}
     for r in rate:
@@ -228,14 +357,12 @@ async def report_executive(
         if r["stato"] == "incassato":
             incassi_per_mese[mese] = incassi_per_mese.get(mese, 0) + r["importo"]
     
-    # Expenses by month
     spese = await db.spese.find({"data": {"$regex": f"^{anno}"}}, {"_id": 0}).to_list(100000)
     spese_per_mese = {}
     for s in spese:
         mese = s["data"][:7]
         spese_per_mese[mese] = spese_per_mese.get(mese, 0) + s["importo"]
     
-    # Calculate profit/loss per month
     tutti_mesi = sorted(set(list(incassi_per_mese.keys()) + list(spese_per_mese.keys())))
     profit_loss = [{
         "mese": m,
@@ -244,20 +371,14 @@ async def report_executive(
         "profit": incassi_per_mese.get(m, 0) - spese_per_mese.get(m, 0)
     } for m in tutti_mesi]
     
-    # Late payments stats
     rate_ritardo = await db.rate.count_documents({"stato": "in_ritardo"})
     totale_rate_anno = len(rate)
     percentuale_insoluti = round(rate_ritardo / totale_rate_anno * 100, 1) if totale_rate_anno > 0 else 0
     
-    # Contracts expiring soon
     from dateutil.relativedelta import relativedelta
     target_30 = (date.today() + relativedelta(days=30)).isoformat()
-    contratti_scadenza = await db.contratti.count_documents({
-        "stato": "attivo",
-        "data_scadenza": {"$lte": target_30}
-    })
+    contratti_scadenza = await db.contratti.count_documents({"stato": "attivo", "data_scadenza": {"$lte": target_30}})
     
-    # Critical events
     eventi_critici = await db.eventi_critici.count_documents({})
     eventi_alta = await db.eventi_critici.count_documents({"gravita": "alta"})
     
