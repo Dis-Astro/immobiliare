@@ -30,11 +30,14 @@ async def seed_admin_user():
     """Seed admin user if not exists."""
     from utils.auth import get_password_hash
     
-    admin = await db.users.find_one({"email": "admin@azienda.local"})
+    admin = await db.users.find_one({"email": "admin@estatewise.it"})
     if not admin:
+        # Also delete old admin if exists
+        await db.users.delete_many({"email": {"$regex": "admin@"}})
+        
         admin_user = {
             "id": "admin-001",
-            "email": "admin@azienda.local",
+            "email": "admin@estatewise.it",
             "nome": "Amministratore",
             "password_hash": get_password_hash("admin123"),
             "ruolo": "supervisore",
@@ -43,7 +46,7 @@ async def seed_admin_user():
             "created_at": datetime.now(timezone.utc).isoformat()
         }
         await db.users.insert_one(admin_user)
-        logger.info("Admin user seeded: admin@azienda.local / admin123")
+        logger.info("Admin user seeded: admin@estatewise.it / admin123")
 
 
 async def seed_tipi_immobile():
