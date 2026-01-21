@@ -1,0 +1,132 @@
+{
+  "identity": {
+    "persona": "E1: The Anti-AI Designer",
+    "philosophy": "Fusion over Imitation. Emotion First. Content is King.",
+    "anti_patterns": [
+      "Purple/Teal gradients for CTAs",
+      "Inter font for headings",
+      "Centered layouts everywhere",
+      "Gradient overload (>20%)"
+    ]
+  },
+  "theme_strategy": {
+    "mode": "system",
+    "archetype": "Swiss & High-Contrast (Archetype 4) + Performance Pro (Archetype 2)",
+    "emotional_goal": "Authority, Clarity, Efficiency, Trust",
+    "description": "A 'Command Center' aesthetic. Stark contrasts for data legibility. Color is used strictly for function (status, alerts) and branding, never for decoration."
+  },
+  "typography": {
+    "headings": {
+      "font_family": "Outfit, sans-serif",
+      "weights": ["600", "700"],
+      "usage": "Main page titles, section headers, modal titles. Use tight tracking.",
+      "fallback": "system-ui"
+    },
+    "body": {
+      "font_family": "Inter, sans-serif",
+      "weights": ["400", "500"],
+      "usage": "General text, data tables, form inputs.",
+      "fallback": "sans-serif"
+    },
+    "mono": {
+      "font_family": "JetBrains Mono, monospace",
+      "weights": ["400"],
+      "usage": "Contract IDs, Financial figures, API keys.",
+      "fallback": "monospace"
+    },
+    "rules": [
+      "Headings > 32px must use tracking-tight",
+      "Overlines/Labels must be Uppercase + tracking-widest + text-xs",
+      "Line height: tight for headers, relaxed for body"
+    ]
+  },
+  "colors": {
+    "primary": {
+      "name": "Corporate Slate",
+      "hex": "#0F172A",
+      "tailwind": "bg-slate-900 text-white"
+    },
+    "secondary": {
+      "name": "Cool Grey",
+      "hex": "#F1F5F9",
+      "tailwind": "bg-slate-100 text-slate-900"
+    },
+    "accent": {
+      "name": "Signal Red (Critical)",
+      "hex": "#EF4444",
+      "tailwind": "bg-red-500"
+    },
+    "status": {
+      "critical": "bg-red-100 text-red-700 border-red-200",
+      "warning": "bg-amber-100 text-amber-700 border-amber-200",
+      "success": "bg-emerald-100 text-emerald-700 border-emerald-200",
+      "neutral": "bg-slate-100 text-slate-700 border-slate-200"
+    },
+    "background": {
+      "light": "#FFFFFF",
+      "dark": "#020617",
+      "surface_light": "#F8FAFC",
+      "surface_dark": "#0F172A"
+    },
+    "forbidden": ["#7351B7", "#1B93A4"]
+  },
+  "layout": {
+    "grid_system": "Bento Grid Mode B (High Density)",
+    "spacing": "Generous (2-3x standard). Use p-6, p-8 for containers.",
+    "container_style": "Grid Borders (The 'Technical' Look)",
+    "rules": [
+      "Mobile-first: grid-cols-1 -> md:grid-cols-3 -> lg:grid-cols-4",
+      "Gap: gap-4 or gap-6 (Tight for dashboard)",
+      "Every pixel utilized. Use h-full on children.",
+      "No jagged bottoms."
+    ]
+  },
+  "components": {
+    "cards": {
+      "style": "Flat, 1px border (border-slate-200 dark:border-slate-800), no shadow by default.",
+      "hover": "Shadow-lg, slight lift (-translate-y-1), border darkens.",
+      "padding": "p-6"
+    },
+    "buttons": {
+      "primary": "bg-slate-900 text-white hover:bg-slate-800 rounded-md px-6 py-2 font-medium transition-all",
+      "secondary": "bg-white border border-slate-200 text-slate-900 hover:bg-slate-50 rounded-md px-6 py-2 font-medium transition-all",
+      "destructive": "bg-red-600 text-white hover:bg-red-700 rounded-md px-6 py-2"
+    },
+    "inputs": {
+      "style": "bg-white border-slate-200 focus:ring-2 focus:ring-slate-900 focus:border-transparent rounded-md h-10"
+    },
+    "map": {
+      "style": "Full height container. Floating panels with Glassmorphism (bg-white/80 backdrop-blur-md).",
+      "markers": "Color-coded by status (Red=Problem, Yellow=Warning, Green=OK)."
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": "Use for sticky headers and map overlays. bg-white/70 backdrop-blur-xl border-b border-white/20.",
+    "textures": "Subtle noise/grain on solid backgrounds to reduce digital flatness.",
+    "shadows": "Layered shadows (ambient + direct) for floating elements."
+  },
+  "assets": {
+    "images": {
+      "office_exterior": "https://images.pexels.com/photos/18435276/pexels-photo-18435276.jpeg",
+      "apartment_interior": "https://images.pexels.com/photos/3754595/pexels-photo-3754595.jpeg",
+      "user_avatar": "https://images.pexels.com/photos/14589344/pexels-photo-14589344.jpeg"
+    },
+    "icons": "Lucide React (default). Use Phosphor Icons for marketing sections if needed."
+  },
+  "instructions_to_main_agent": [
+    "Implement the 'Problems-first' dashboard using the Bento Grid Mode B.",
+    "Use Recharts for all data visualization. Keep charts clean and minimal.",
+    "Use React-Leaflet for the map. Custom markers are mandatory.",
+    "Ensure all text has sufficient contrast (APCA standards).",
+    "Do NOT use gradients for backgrounds. Use solid colors or subtle noise.",
+    "For the 'Reputation' feature, use a 5-star system with explicit text tags (e.g., 'Reliable', 'Late Payer').",
+    "All interactive elements must have data-testid attributes."
+  ],
+  "universal_guidelines": [
+    "Avoid 'AI slop' aesthetic (generic centered layouts, purple gradients).",
+    "Create depth through z-index and layered elements.",
+    "Micro-animations for all interactions (hover, focus, active).",
+    "Use 'sonner' for toasts.",
+    "Export components as named exports, pages as default exports."
+  ]
+}
