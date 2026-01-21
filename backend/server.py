@@ -77,19 +77,8 @@ async def seed_categorie_spesa():
         logger.info("Expense categories seeded")
 
 
-async def run_notification_scheduler():
-    """Background task for notifications."""
-    from services.notifications import NotificationService
-    
-    while True:
-        try:
-            service = NotificationService(db)
-            await service.run_scheduled_checks()
-        except Exception as e:
-            logger.error(f"Notification scheduler error: {e}")
-        
-        # Run every hour
-        await asyncio.sleep(3600)
+# NOTA: Scheduler in-process RIMOSSO - Usare Celery + Redis + Beat
+# I task di notifica sono gestiti da: celery_app.py + tasks/notifications.py
 
 
 @asynccontextmanager
@@ -127,8 +116,9 @@ async def lifespan(app: FastAPI):
     
     logger.info("Database indexes created")
     
-    # Start background scheduler (non-blocking)
-    asyncio.create_task(run_notification_scheduler())
+    # NOTA: Lo scheduler in-process è stato RIMOSSO.
+    # Le notifiche vengono gestite da Celery + Redis + Beat
+    # Avviare i servizi con: docker-compose up -d (redis, worker, beat)
     
     yield
     
