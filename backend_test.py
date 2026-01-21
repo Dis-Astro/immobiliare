@@ -142,12 +142,12 @@ class EstateWiseAPITester:
             success = False
             response_data = {"error": str(e)}
         
-        if success and 'access_token' in response:
-            self.token = response['access_token']
+        if success and 'access_token' in response_data:
+            self.token = response_data['access_token']
             self.log(f"✅ Login successful - Token obtained")
-            self.log(f"   User: {response.get('user', {}).get('email', 'N/A')}")
-            self.log(f"   Role: {response.get('user', {}).get('ruolo', 'N/A')}")
-            self.log(f"   Must change password: {response.get('user', {}).get('must_change_password', 'N/A')}")
+            self.log(f"   User: {response_data.get('user', {}).get('email', 'N/A')}")
+            self.log(f"   Role: {response_data.get('user', {}).get('ruolo', 'N/A')}")
+            self.log(f"   Must change password: {response_data.get('user', {}).get('must_change_password', 'N/A')}")
             return True
         else:
             self.log("❌ Login failed - Cannot proceed with authenticated tests")
