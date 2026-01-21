@@ -171,6 +171,16 @@ async def create_contratto(
     if rate:
         await db.rate.insert_many(rate)
     
+    # IMPORTANTE: Aggiorna stato unità a "locata"
+    await db.unita.update_one(
+        {"id": data.unita_id},
+        {"$set": {
+            "stato": "locata",
+            "contratto_attivo_id": contratto.id,
+            "affittuario_nome": affittuario["nome"] if affittuario else None
+        }}
+    )
+    
     await log_audit(db, "contratti", contratto.id, "create", None, contratto_dict, current_user.id)
     
     return contratto
