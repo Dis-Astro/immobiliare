@@ -56,16 +56,28 @@ const createColoredIcon = (color) => {
   });
 };
 
-// Component to fit bounds
+// Component to fit bounds - OBBLIGATORIO
+// Centra automaticamente la mappa sui marker presenti
 function FitBounds({ markers }) {
   const map = useMap();
   
   useEffect(() => {
-    if (markers && markers.length > 0) {
-      const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lon]));
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16 });
-    } else if (markers && markers.length === 1) {
+    if (!markers || markers.length === 0) {
+      // Nessun marker - non fare nulla, il placeholder gestirà la UI
+      return;
+    }
+    
+    if (markers.length === 1) {
+      // Un solo marker: centra su quel punto con zoom 15
       map.setView([markers[0].lat, markers[0].lon], 15);
+    } else {
+      // Più marker: calcola bounds e applica fitBounds
+      const bounds = L.latLngBounds(markers.map(m => [m.lat, m.lon]));
+      map.fitBounds(bounds, { 
+        padding: [40, 40], 
+        maxZoom: 16,
+        animate: true
+      });
     }
   }, [markers, map]);
   
