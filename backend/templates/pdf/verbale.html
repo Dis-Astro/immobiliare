@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Verbale di {{ verbale.tipo | title }}</title>
+</head>
+<body>
+    <div class="header">
+        <h1>VERBALE DI {{ verbale.tipo | upper }}</h1>
+        <p><strong>Data: {{ verbale.data }}</strong></p>
+    </div>
+
+    <h2>Dati Contratto</h2>
+    <table>
+        {% if contratto %}
+        <tr><td><strong>Contratto:</strong></td><td>{{ contratto.codice_contratto }}</td></tr>
+        {% endif %}
+        {% if immobile %}
+        <tr><td><strong>Immobile:</strong></td><td>{{ immobile.titolo }} - {{ immobile.indirizzo }}</td></tr>
+        {% endif %}
+        {% if unita %}
+        <tr><td><strong>Unità:</strong></td><td>{{ unita.codice_unita }} ({{ unita.tipo_immobile }})</td></tr>
+        {% endif %}
+    </table>
+
+    <h2>Parti Presenti</h2>
+    <div style="display: flex; justify-content: space-between;">
+        <div style="width: 48%;">
+            <h3>Locatore</h3>
+            {% if locatore %}
+            <p><strong>{{ locatore.nome }}</strong></p>
+            <p>CF/P.IVA: {{ locatore.cf or locatore.piva or 'N/D' }}</p>
+            {% endif %}
+        </div>
+        <div style="width: 48%;">
+            <h3>Conduttore</h3>
+            {% if affittuario %}
+            <p><strong>{{ affittuario.nome }}</strong></p>
+            <p>CF/P.IVA: {{ affittuario.cf or affittuario.piva or 'N/D' }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <h2>Checklist Stato Ambienti</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Ambiente/Elemento</th>
+                <th>Stato</th>
+                <th>Note</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in verbale.checklist %}
+            <tr>
+                <td>{{ item.ambiente }}</td>
+                <td class="{% if item.stato == 'ottimo' or item.stato == 'buono' %}status-ok{% elif item.stato == 'usurato' %}status-warning{% else %}status-danger{% endif %}">
+                    {{ item.stato | upper }}
+                </td>
+                <td>{{ item.note or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if verbale.note %}
+    <h2>Note Generali</h2>
+    <p>{{ verbale.note }}</p>
+    {% endif %}
+
+    <h2>Letture Contatori</h2>
+    <p><em>Da compilare manualmente:</em></p>
+    <table>
+        <tr><td><strong>Elettricità:</strong></td><td>_______________ kWh</td></tr>
+        <tr><td><strong>Gas:</strong></td><td>_______________ mc</td></tr>
+        <tr><td><strong>Acqua:</strong></td><td>_______________ mc</td></tr>
+    </table>
+
+    <div class="signature-area">
+        <div class="signature-box">
+            <p><strong>Il Locatore</strong></p>
+            <div class="signature-line">Firma</div>
+        </div>
+        <div class="signature-box">
+            <p><strong>Il Conduttore</strong></p>
+            <div class="signature-line">Firma</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>Documento generato automaticamente da EstateWise il {{ generated_at }}</p>
+        <p>Compilato da: {{ verbale.compilato_da or 'N/D' }}</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Fascicolo Contratto {{ contratto.codice_contratto }}</title>
+</head>
+<body>
+    <div class="header">
+        <h1>FASCICOLO CONTRATTO DI LOCAZIONE</h1>
+        <p><strong>{{ contratto.codice_contratto }}</strong></p>
+    </div>
+
+    <div class="info-box">
+        <h3>Dati Generali</h3>
+        <table>
+            <tr><td><strong>Data Firma:</strong></td><td>{{ contratto.data_firma }}</td></tr>
+            <tr><td><strong>Data Inizio:</strong></td><td>{{ contratto.data_inizio }}</td></tr>
+            <tr><td><strong>Data Scadenza:</strong></td><td>{{ contratto.data_scadenza }}</td></tr>
+            <tr><td><strong>Durata:</strong></td><td>{{ contratto.durata_mesi }} mesi</td></tr>
+            <tr><td><strong>Stato:</strong></td><td>{{ contratto.stato | upper }}</td></tr>
+        </table>
+    </div>
+
+    <h2>Immobile e Unità</h2>
+    {% if immobile %}
+    <table>
+        <tr><td><strong>Immobile:</strong></td><td>{{ immobile.titolo }} ({{ immobile.codice }})</td></tr>
+        <tr><td><strong>Indirizzo:</strong></td><td>{{ immobile.indirizzo }}</td></tr>
+        {% if unita %}
+        <tr><td><strong>Unità:</strong></td><td>{{ unita.codice_unita }} - {{ unita.tipo_immobile }}</td></tr>
+        <tr><td><strong>Superficie:</strong></td><td>{{ unita.mq or 'N/D' }} mq</td></tr>
+        {% endif %}
+    </table>
+    {% endif %}
+
+    <h2>Parti Contraenti</h2>
+    <div style="display: flex; justify-content: space-between;">
+        <div style="width: 48%;">
+            <h3>Locatore</h3>
+            {% if locatore %}
+            <p><strong>{{ locatore.nome }}</strong></p>
+            <p>CF/P.IVA: {{ locatore.cf or locatore.piva or 'N/D' }}</p>
+            <p>Indirizzo: {{ locatore.indirizzo or 'N/D' }}</p>
+            <p>Email: {{ locatore.email or 'N/D' }}</p>
+            {% endif %}
+        </div>
+        <div style="width: 48%;">
+            <h3>Conduttore</h3>
+            {% if affittuario %}
+            <p><strong>{{ affittuario.nome }}</strong></p>
+            <p>CF/P.IVA: {{ affittuario.cf or affittuario.piva or 'N/D' }}</p>
+            <p>Indirizzo: {{ affittuario.indirizzo or 'N/D' }}</p>
+            <p>Email: {{ affittuario.email or 'N/D' }}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <h2>Condizioni Economiche</h2>
+    <table>
+        <tr><td><strong>Canone:</strong></td><td>€ {{ "%.2f"|format(contratto.canone_importo) }} / {{ contratto.periodicita }}</td></tr>
+        <tr><td><strong>Giorno Scadenza Rata:</strong></td><td>{{ contratto.giorno_scadenza }}° giorno del mese</td></tr>
+        <tr><td><strong>Deposito Cauzionale:</strong></td><td>€ {{ "%.2f"|format(contratto.deposito_importo or 0) }}</td></tr>
+        <tr><td><strong>Stato Deposito:</strong></td><td>{{ contratto.deposito_stato or 'N/D' }}</td></tr>
+    </table>
+
+    <h2>Piano Rate</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Periodo</th>
+                <th>Importo</th>
+                <th>Scadenza</th>
+                <th>Stato</th>
+                <th>Data Incasso</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rata in rate %}
+            <tr>
+                <td>{{ rata.periodo }}</td>
+                <td>€ {{ "%.2f"|format(rata.importo) }}</td>
+                <td>{{ rata.data_scadenza or 'N/D' }}</td>
+                <td class="{% if rata.stato == 'incassato' %}status-ok{% elif rata.stato == 'in_ritardo' %}status-danger{% else %}status-warning{% endif %}">
+                    {{ rata.stato | upper }}
+                </td>
+                <td>{{ rata.data_incasso or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if variazioni %}
+    <h2>Variazioni Contrattuali</h2>
+    <table>
+        <thead>
+            <tr><th>Tipo</th><th>Data Efficacia</th><th>Note</th></tr>
+        </thead>
+        <tbody>
+            {% for v in variazioni %}
+            <tr>
+                <td>{{ v.tipo | replace('_', ' ') | title }}</td>
+                <td>{{ v.data_efficacia }}</td>
+                <td>{{ v.note or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if documenti %}
+    <h2>Documenti Allegati</h2>
+    <table>
+        <thead>
+            <tr><th>Tipo</th><th>Nome File</th><th>Data Upload</th></tr>
+        </thead>
+        <tbody>
+            {% for d in documenti %}
+            <tr>
+                <td>{{ d.tipo }}</td>
+                <td>{{ d.filename }}</td>
+                <td>{{ d.uploaded_at[:10] if d.uploaded_at else '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    <div class="footer">
+        <p>Documento generato automaticamente da EstateWise il {{ generated_at }}</p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Report Pagamenti</title>
+</head>
+<body>
+    <div class="header">
+        <h1>REPORT PAGAMENTI</h1>
+        <p><strong>Periodo: {{ periodo_da }} - {{ periodo_a }}</strong></p>
+    </div>
+
+    <div class="info-box">
+        <h3>Riepilogo</h3>
+        <table>
+            <tr><td><strong>Totale Atteso:</strong></td><td>€ {{ "%.2f"|format(totale) }}</td></tr>
+            <tr><td><strong>Totale Incassato:</strong></td><td class="status-ok">€ {{ "%.2f"|format(incassato) }}</td></tr>
+            <tr><td><strong>In Ritardo:</strong></td><td class="status-danger">€ {{ "%.2f"|format(in_ritardo) }}</td></tr>
+            <tr><td><strong>% Incasso:</strong></td><td>{{ percentuale }}%</td></tr>
+        </table>
+    </div>
+
+    <h2>Dettaglio Rate</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Periodo</th>
+                <th>Contratto</th>
+                <th>Affittuario</th>
+                <th>Importo</th>
+                <th>Stato</th>
+                <th>Data Incasso</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for rata in rate %}
+            <tr>
+                <td>{{ rata.periodo }}</td>
+                <td>{{ rata.contratto_codice or 'N/D' }}</td>
+                <td>{{ rata.affittuario_nome or 'N/D' }}</td>
+                <td>€ {{ "%.2f"|format(rata.importo) }}</td>
+                <td class="{% if rata.stato == 'incassato' %}status-ok{% elif rata.stato == 'in_ritardo' %}status-danger{% else %}status-warning{% endif %}">
+                    {{ rata.stato | upper }}
+                </td>
+                <td>{{ rata.data_incasso or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="footer">
+        <p>Documento generato automaticamente da EstateWise il {{ generated_at }}</p>
+        <p>Totale rate: {{ rate | length }}</p>
+    </div>
+</body>
+</html>

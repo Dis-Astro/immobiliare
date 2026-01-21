@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Scheda Immobile {{ immobile.codice }}</title>
+</head>
+<body>
+    <div class="header">
+        <h1>SCHEDA IMMOBILE</h1>
+        <p><strong>{{ immobile.titolo }}</strong></p>
+    </div>
+
+    <div class="info-box">
+        <h3>Identificazione</h3>
+        <table>
+            <tr><td><strong>Codice:</strong></td><td>{{ immobile.codice }}</td></tr>
+            <tr><td><strong>Indirizzo:</strong></td><td>{{ immobile.indirizzo }}</td></tr>
+            <tr><td><strong>Coordinate:</strong></td><td>{{ immobile.lat or 'N/D' }}, {{ immobile.lon or 'N/D' }}</td></tr>
+        </table>
+    </div>
+
+    <h2>Dati Catastali</h2>
+    <table>
+        <tr><td><strong>Comune:</strong></td><td>{{ immobile.catastale_comune or 'N/D' }}</td></tr>
+        <tr><td><strong>Foglio:</strong></td><td>{{ immobile.foglio or 'N/D' }}</td></tr>
+        <tr><td><strong>Particella:</strong></td><td>{{ immobile.particella or 'N/D' }}</td></tr>
+        <tr><td><strong>Subalterno:</strong></td><td>{{ immobile.subalterno or 'N/D' }}</td></tr>
+        <tr><td><strong>Categoria:</strong></td><td>{{ immobile.categoria or 'N/D' }}</td></tr>
+        <tr><td><strong>Rendita Catastale:</strong></td><td>€ {{ "%.2f"|format(immobile.rendita or 0) }}</td></tr>
+    </table>
+
+    <h2>Unità Immobiliari ({{ unita_list | length }})</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Codice</th>
+                <th>Tipo</th>
+                <th>MQ</th>
+                <th>Destinazione</th>
+                <th>Stato</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for unita in unita_list %}
+            <tr>
+                <td>{{ unita.codice_unita }}</td>
+                <td>{{ unita.tipo_immobile | replace('_', ' ') | title }}</td>
+                <td>{{ unita.mq or 'N/D' }}</td>
+                <td>{{ unita.destinazione_uso_attuale or 'N/D' }}</td>
+                <td>
+                    {% if unita.contratti and unita.contratti | selectattr('stato', 'equalto', 'attivo') | list %}
+                        <span class="status-ok">LOCATA</span>
+                    {% else %}
+                        <span class="status-warning">LIBERA</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if spese %}
+    <h2>Ultime Spese</h2>
+    <table>
+        <thead>
+            <tr><th>Data</th><th>Categoria</th><th>Importo</th><th>Fornitore</th></tr>
+        </thead>
+        <tbody>
+            {% for s in spese[:10] %}
+            <tr>
+                <td>{{ s.data }}</td>
+                <td>{{ s.categoria | replace('_', ' ') | title }}</td>
+                <td>€ {{ "%.2f"|format(s.importo) }}</td>
+                <td>{{ s.fornitore or '-' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <p><strong>Totale Spese:</strong> € {{ "%.2f"|format(totale_spese) }}</p>
+    {% endif %}
+
+    {% if immobile.note %}
+    <h2>Note</h2>
+    <p>{{ immobile.note }}</p>
+    {% endif %}
+
+    <div class="footer">
+        <p>Documento generato automaticamente da EstateWise il {{ generated_at }}</p>
+    </div>
+</body>
+</html>
