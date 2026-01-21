@@ -82,9 +82,13 @@ def create_notification(
     db.notifiche.insert_one(notifica)
     logger.info(f"Notifica creata: {tipo} per user {user_id}")
     
-    # Tenta invio email immediato
+    # Tenta invio email immediato (solo se Celery/Redis è disponibile)
     if destinatario_email:
-        send_notification_email.delay(notifica["id"])
+        try:
+            send_notification_email.delay(notifica["id"])
+        except Exception as e:
+            logger.warning(f"Celery non disponibile, email non inviata: {e}")
+            # Marca come pending, verrà inviata quando Celery sarà disponibile
     
     return notifica
 
