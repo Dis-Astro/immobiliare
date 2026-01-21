@@ -102,20 +102,45 @@ class EstateWiseAPITester:
         """Test authentication with admin credentials"""
         self.log("=== TESTING AUTHENTICATION ===")
         
-        # Test login with admin credentials
+        # Test login with admin credentials using form data
+        url = f"{self.base_url}/api/v1/auth/login"
         login_data = {
             "username": "admin@estatewise.it",
             "password": "admin123"
         }
         
-        success, response = self.run_test(
-            "Admin Login",
-            "POST",
-            "auth/login",
-            200,
-            data=login_data,
-            headers={'Content-Type': 'application/x-www-form-urlencoded'}
-        )
+        self.tests_run += 1
+        self.log("Testing Admin Login... (POST auth/login)")
+        
+        try:
+            response = self.session.post(url, data=login_data)
+            success = response.status_code == 200
+            
+            if success:
+                self.tests_passed += 1
+                self.log(f"✅ PASSED - Status: {response.status_code}")
+                response_data = response.json()
+            else:
+                self.log(f"❌ FAILED - Expected 200, got {response.status_code}")
+                self.log(f"   Response: {response.text[:200]}...")
+                self.failed_tests.append({
+                    "test": "Admin Login",
+                    "expected": 200,
+                    "actual": response.status_code,
+                    "response": response.text[:500]
+                })
+                try:
+                    response_data = response.json()
+                except:
+                    response_data = {"error": response.text}
+        except Exception as e:
+            self.log(f"❌ FAILED - Exception: {str(e)}", "ERROR")
+            self.failed_tests.append({
+                "test": "Admin Login",
+                "error": str(e)
+            })
+            success = False
+            response_data = {"error": str(e)}
         
         if success and 'access_token' in response:
             self.token = response['access_token']
