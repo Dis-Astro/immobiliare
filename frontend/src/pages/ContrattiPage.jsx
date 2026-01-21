@@ -88,12 +88,12 @@ export default function ContrattiPage() {
                 className="pl-9"
               />
             </div>
-            <Select value={stato} onValueChange={setStato}>
+            <Select value={stato || 'all'} onValueChange={(v) => setStato(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Tutti gli stati" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tutti gli stati</SelectItem>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
                 <SelectItem value="attivo">Attivo</SelectItem>
                 <SelectItem value="scaduto">Scaduto</SelectItem>
                 <SelectItem value="chiuso">Chiuso</SelectItem>
