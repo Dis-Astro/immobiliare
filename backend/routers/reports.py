@@ -1,13 +1,32 @@
+"""
+Router Report con supporto opzionale per WeasyPrint.
+Se WeasyPrint non è disponibile, i report PDF restituiscono un messaggio di errore.
+"""
+
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import StreamingResponse, Response
 from typing import List, Optional
 from datetime import date, datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
-from weasyprint import HTML, CSS
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
 import io
-import pandas as pd
+import logging
+
+# Try to import WeasyPrint - it may fail if system dependencies are missing
+try:
+    from weasyprint import HTML, CSS
+    WEASYPRINT_AVAILABLE = True
+except (ImportError, OSError) as e:
+    WEASYPRINT_AVAILABLE = False
+    logging.warning(f"WeasyPrint not available: {e}. PDF generation disabled.")
+
+try:
+    import pandas as pd
+    PANDAS_AVAILABLE = True
+except ImportError:
+    PANDAS_AVAILABLE = False
+    logging.warning("Pandas not available. Excel export disabled.")
 
 from models.user import UserInDB, UserRole
 from routers.auth import get_current_user, get_db
@@ -18,10 +37,13 @@ router = APIRouter(prefix="/reports", tags=["Report"])
 TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "pdf"
 
 # Jinja2 environment
-jinja_env = Environment(
-    loader=FileSystemLoader(str(TEMPLATES_DIR)),
-    autoescape=True
-)
+if TEMPLATES_DIR.exists():
+    jinja_env = Environment(
+        loader=FileSystemLoader(str(TEMPLATES_DIR)),
+        autoescape=True
+    )
+else:
+    jinja_env = None
 
 # Default CSS for PDF
 DEFAULT_CSS = """
@@ -53,9 +75,27 @@ tr:nth-child(even) { background-color: #fafafa; }
 
 def generate_pdf(html_content: str) -> bytes:
     """Generate PDF from HTML using WeasyPrint."""
+    if not WEASYPRINT_AVAILABLE:
+        raise HTTPException(
+            status_code=503,
+            detail="Generazione PDF non disponibile. Librerie di sistema mancanti (WeasyPrint)."
+        )
+    
     html = HTML(string=html_content)
     pdf_bytes = html.write_pdf(stylesheets=[CSS(string=DEFAULT_CSS)])
     return pdf_bytes
+
+
+@router.get("/status")
+async def get_report_status():
+    """Check report generation capabilities."""
+    return {
+        "pdf_available": WEASYPRINT_AVAILABLE,
+        "excel_available": PANDAS_AVAILABLE,
+        "csv_available": True,
+        "json_available": True,
+        "message": "OK" if WEASYPRINT_AVAILABLE else "PDF generation requires system libraries. Install libpangoft2-1.0-0"
+    }
 
 
 @router.get("/contratto/{contratto_id}/pdf")
@@ -65,6 +105,9 @@ async def get_contratto_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download contract PDF (fascicolo contratto)."""
+    if not WEASYPRINT_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
+    
     contratto = await db.contratti.find_one({"id": contratto_id}, {"_id": 0})
     if not contratto:
         raise HTTPException(status_code=404, detail="Contratto non trovato")
@@ -79,18 +122,31 @@ async def get_contratto_pdf(
     variazioni = await db.variazioni.find({"contratto_id": contratto_id}, {"_id": 0}).to_list(50)
     documenti = await db.documenti.find({"livello": "contratto", "ref_id": contratto_id}, {"_id": 0}).to_list(50)
     
-    template = jinja_env.get_template("contratto.html")
-    html_content = template.render(
-        contratto=contratto,
-        locatore=locatore,
-        affittuario=affittuario,
-        unita=unita,
-        immobile=immobile,
-        rate=rate,
-        variazioni=variazioni,
-        documenti=documenti,
-        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
-    )
+    if jinja_env:
+        try:
+            template = jinja_env.get_template("contratto.html")
+            html_content = template.render(
+                contratto=contratto,
+                locatore=locatore,
+                affittuario=affittuario,
+                unita=unita,
+                immobile=immobile,
+                rate=rate,
+                variazioni=variazioni,
+                documenti=documenti,
+                generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+            )
+        except Exception:
+            # Fallback to basic HTML
+            html_content = f"""
+            <h1>Fascicolo Contratto {contratto.get('codice_contratto', 'N/A')}</h1>
+            <p>Locatore: {locatore.get('nome') if locatore else 'N/A'}</p>
+            <p>Affittuario: {affittuario.get('nome') if affittuario else 'N/A'}</p>
+            <p>Immobile: {immobile.get('titolo') if immobile else 'N/A'}</p>
+            <p>Canone: € {contratto.get('canone_importo', 0):,.2f}</p>
+            """
+    else:
+        html_content = f"<h1>Contratto {contratto.get('codice_contratto', 'N/A')}</h1>"
     
     pdf_bytes = generate_pdf(html_content)
     
@@ -110,6 +166,9 @@ async def get_immobile_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download property PDF (scheda immobile)."""
+    if not WEASYPRINT_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
+    
     immobile = await db.immobili.find_one({"id": immobile_id}, {"_id": 0})
     if not immobile:
         raise HTTPException(status_code=404, detail="Immobile non trovato")
@@ -118,20 +177,25 @@ async def get_immobile_pdf(
     spese = await db.spese.find({"immobile_id": immobile_id}, {"_id": 0}).sort("data", -1).to_list(50)
     documenti = await db.documenti.find({"livello": "immobile", "ref_id": immobile_id}, {"_id": 0}).to_list(50)
     
-    # Get contracts for each unit
     for u in unita_list:
         contratti = await db.contratti.find({"unita_id": u["id"]}, {"_id": 0}).to_list(10)
         u["contratti"] = contratti
     
-    template = jinja_env.get_template("immobile.html")
-    html_content = template.render(
-        immobile=immobile,
-        unita_list=unita_list,
-        spese=spese,
-        documenti=documenti,
-        totale_spese=sum(s["importo"] for s in spese),
-        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
-    )
+    if jinja_env:
+        try:
+            template = jinja_env.get_template("immobile.html")
+            html_content = template.render(
+                immobile=immobile,
+                unita_list=unita_list,
+                spese=spese,
+                documenti=documenti,
+                totale_spese=sum(s["importo"] for s in spese),
+                generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+            )
+        except Exception:
+            html_content = f"<h1>Scheda Immobile {immobile.get('codice', 'N/A')}</h1>"
+    else:
+        html_content = f"<h1>Immobile {immobile.get('codice', 'N/A')}</h1>"
     
     pdf_bytes = generate_pdf(html_content)
     
@@ -151,6 +215,9 @@ async def get_verbale_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download verbale PDF."""
+    if not WEASYPRINT_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
+    
     verbale = await db.verbali.find_one({"id": verbale_id}, {"_id": 0})
     if not verbale:
         raise HTTPException(status_code=404, detail="Verbale non trovato")
@@ -161,16 +228,22 @@ async def get_verbale_pdf(
     unita = await db.unita.find_one({"id": contratto["unita_id"]}, {"_id": 0}) if contratto else None
     immobile = await db.immobili.find_one({"id": unita["immobile_id"]}, {"_id": 0}) if unita else None
     
-    template = jinja_env.get_template("verbale.html")
-    html_content = template.render(
-        verbale=verbale,
-        contratto=contratto,
-        affittuario=affittuario,
-        locatore=locatore,
-        unita=unita,
-        immobile=immobile,
-        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
-    )
+    if jinja_env:
+        try:
+            template = jinja_env.get_template("verbale.html")
+            html_content = template.render(
+                verbale=verbale,
+                contratto=contratto,
+                affittuario=affittuario,
+                locatore=locatore,
+                unita=unita,
+                immobile=immobile,
+                generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+            )
+        except Exception:
+            html_content = f"<h1>Verbale {verbale.get('tipo', 'N/A')}</h1>"
+    else:
+        html_content = f"<h1>Verbale {verbale.get('tipo', 'N/A')}</h1>"
     
     pdf_bytes = generate_pdf(html_content)
     
@@ -193,6 +266,9 @@ async def get_pagamenti_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download payments report PDF."""
+    if not WEASYPRINT_AVAILABLE:
+        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
+    
     query = {}
     if periodo_da:
         query["periodo"] = {"$gte": periodo_da}
@@ -203,13 +279,11 @@ async def get_pagamenti_pdf(
     
     rate = await db.rate.find(query, {"_id": 0}).sort("periodo", 1).to_list(10000)
     
-    # Filter by immobile if specified
     if immobile_id:
         unita_ids = [u["id"] async for u in db.unita.find({"immobile_id": immobile_id}, {"id": 1})]
         contratto_ids = [c["id"] async for c in db.contratti.find({"unita_id": {"$in": unita_ids}}, {"id": 1})]
         rate = [r for r in rate if r["contratto_id"] in contratto_ids]
     
-    # Enrich
     for r in rate:
         contratto = await db.contratti.find_one({"id": r["contratto_id"]}, {"_id": 0})
         if contratto:
@@ -221,17 +295,23 @@ async def get_pagamenti_pdf(
     incassato = sum(r["importo"] for r in rate if r["stato"] == "incassato")
     in_ritardo = sum(r["importo"] for r in rate if r["stato"] == "in_ritardo")
     
-    template = jinja_env.get_template("pagamenti.html")
-    html_content = template.render(
-        rate=rate,
-        periodo_da=periodo_da or "inizio",
-        periodo_a=periodo_a or "oggi",
-        totale=totale,
-        incassato=incassato,
-        in_ritardo=in_ritardo,
-        percentuale=round(incassato/totale*100, 1) if totale > 0 else 0,
-        generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
-    )
+    if jinja_env:
+        try:
+            template = jinja_env.get_template("pagamenti.html")
+            html_content = template.render(
+                rate=rate,
+                periodo_da=periodo_da or "inizio",
+                periodo_a=periodo_a or "oggi",
+                totale=totale,
+                incassato=incassato,
+                in_ritardo=in_ritardo,
+                percentuale=round(incassato/totale*100, 1) if totale > 0 else 0,
+                generated_at=datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M")
+            )
+        except Exception:
+            html_content = f"<h1>Report Pagamenti</h1><p>Totale: € {totale:,.2f}</p>"
+    else:
+        html_content = f"<h1>Report Pagamenti</h1>"
     
     pdf_bytes = generate_pdf(html_content)
     
@@ -308,6 +388,9 @@ async def report_pagamenti(
         )
     
     elif formato == "excel":
+        if not PANDAS_AVAILABLE:
+            raise HTTPException(status_code=503, detail="Excel export non disponibile - pandas non installato")
+        
         df = pd.DataFrame([{
             "Periodo": r["periodo"],
             "Contratto": r.get("contratto_codice", ""),
