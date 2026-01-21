@@ -1,0 +1,194 @@
+# EstateWise - Docker Compose Configuration
+# Stack: FastAPI + React + MongoDB + Redis + Celery
+#
+# Avvio: docker-compose up -d
+# Stop:  docker-compose down
+# Logs:  docker-compose logs -f [service]
+
+version: '3.8'
+
+services:
+  # ===================
+  # DATABASE
+  # ===================
+  mongodb:
+    image: mongo:7.0
+    container_name: estatewise-mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: estatewise
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    networks:
+      - estatewise-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===================
+  # CACHE / MESSAGE BROKER
+  # ===================
+  redis:
+    image: redis:7-alpine
+    container_name: estatewise-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    networks:
+      - estatewise-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ===================
+  # BACKEND API
+  # ===================
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: estatewise-api
+    restart: unless-stopped
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=estatewise
+      - REDIS_URL=redis://redis:6379/0
+      - CORS_ORIGINS=*
+      # SMTP Configuration (optional)
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@estatewise.local}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+    volumes:
+      - uploads_data:/data/uploads
+    ports:
+      - "8001:8001"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - estatewise-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ===================
+  # CELERY WORKER
+  # ===================
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: estatewise-celery-worker
+    restart: unless-stopped
+    command: celery -A celery_app worker --loglevel=info --concurrency=2
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=estatewise
+      - REDIS_URL=redis://redis:6379/0
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_FROM=${SMTP_FROM:-noreply@estatewise.local}
+    volumes:
+      - uploads_data:/data/uploads
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - estatewise-network
+
+  # ===================
+  # CELERY BEAT (Scheduler)
+  # ===================
+  celery-beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: estatewise-celery-beat
+    restart: unless-stopped
+    command: celery -A celery_app beat --loglevel=info
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+      - DB_NAME=estatewise
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - estatewise-network
+
+  # ===================
+  # FRONTEND
+  # ===================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - REACT_APP_BACKEND_URL=${REACT_APP_BACKEND_URL:-http://localhost:8001}
+    container_name: estatewise-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    networks:
+      - estatewise-network
+
+  # ===================
+  # NGINX REVERSE PROXY
+  # ===================
+  nginx:
+    image: nginx:alpine
+    container_name: estatewise-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api
+      - frontend
+    networks:
+      - estatewise-network
+
+# ===================
+# VOLUMES
+# ===================
+volumes:
+  mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+# ===================
+# NETWORKS
+# ===================
+networks:
+  estatewise-network:
+    driver: bridge
