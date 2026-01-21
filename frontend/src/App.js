@@ -13,8 +13,10 @@ import MappaPage from './pages/MappaPage';
 import ImmobiliPage from './pages/ImmobiliPage';
 import ImmobileFormPage from './pages/ImmobileFormPage';
 import ContrattiPage from './pages/ContrattiPage';
+import ContrattoWizardPage from './pages/ContrattoWizardPage';
 import SoggettiPage from './pages/SoggettiPage';
 import PagamentiPage from './pages/PagamentiPage';
+import NotifichePage from './pages/NotifichePage';
 
 // Protected Route component
 function ProtectedRoute({ children }) {
@@ -140,7 +142,7 @@ function App() {
             path="/contratti/nuovo" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Wizard Nuovo Contratto" />
+                <ContrattoWizardPage />
               </ProtectedRoute>
             } 
           />
@@ -264,7 +266,7 @@ function App() {
             path="/notifiche" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Notifiche" />
+                <NotifichePage />
               </ProtectedRoute>
             } 
           />
