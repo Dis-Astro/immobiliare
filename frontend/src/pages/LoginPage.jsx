@@ -122,7 +122,7 @@ export default function LoginPage() {
                 CREDENZIALI DEMO
               </p>
               <p className="text-sm text-slate-700 dark:text-slate-300 font-mono">
-                admin@azienda.local / admin123
+                admin@estatewise.it / admin123
               </p>
             </div>
           </CardContent>
