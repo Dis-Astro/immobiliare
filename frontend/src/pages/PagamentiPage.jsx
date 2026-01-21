@@ -155,7 +155,7 @@ export default function PagamentiPage() {
                 <SelectValue placeholder="Tutti gli stati" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tutti gli stati</SelectItem>
+                <SelectItem value="all">Tutti gli stati</SelectItem>
                 <SelectItem value="da_incassare">Da Incassare</SelectItem>
                 <SelectItem value="incassato">Incassato</SelectItem>
                 <SelectItem value="in_ritardo">In Ritardo</SelectItem>
@@ -168,7 +168,7 @@ export default function PagamentiPage() {
                 <SelectValue placeholder="Tutti i periodi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tutti i periodi</SelectItem>
+                <SelectItem value="all">Tutti i periodi</SelectItem>
                 {generateMonths().map(m => (
                   <SelectItem key={m.value} value={m.value} className="capitalize">
                     {m.label}
