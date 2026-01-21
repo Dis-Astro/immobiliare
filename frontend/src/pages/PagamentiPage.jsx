@@ -38,13 +38,13 @@ const statoColors = {
 };
 
 export default function PagamentiPage() {
-  const [stato, setStato] = useState('');
-  const [periodo, setPeriodo] = useState('');
+  const [stato, setStato] = useState('all');
+  const [periodo, setPeriodo] = useState('all');
   const { request } = useApi();
   
   const queryParams = new URLSearchParams();
-  if (stato) queryParams.set('stato', stato);
-  if (periodo) queryParams.set('periodo_da', periodo);
+  if (stato && stato !== 'all') queryParams.set('stato', stato);
+  if (periodo && periodo !== 'all') queryParams.set('periodo_da', periodo);
   
   const { data: rate, loading, refetch } = useFetch(`/rate?${queryParams.toString()}`);
   const { data: stats } = useFetch('/rate/stats');
