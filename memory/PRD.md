@@ -1,107 +1,169 @@
 # EstateWise - PRD (Product Requirements Document)
 
-## Problema Originale
-Webapp enterprise completa per gestione affitti immobiliari aziendali che superi i limiti dei software esistenti, combinando:
-- Gestione contrattuale avanzata
-- UX intuitiva e fluida (problemi-first)
-- Valutazione reputazionale affittuari (feature unica)
-- Vista mappa interattiva con geolocalizzazione (marker colorati per criticità)
-- Reportistica avanzata con grafici, KPI e export PDF/Excel
-- Notifiche intelligenti multi-canale (email + notifiche interne)
+## Versione: 1.1.0
+## Data ultimo aggiornamento: 2026-01-21
 
-## Stack Tecnologico
-- **Frontend**: React 18 + Tailwind CSS + shadcn/ui + Zustand + React-Leaflet
-- **Backend**: FastAPI (Python 3.11+) + MongoDB + JWT Auth
-- **Infrastruttura**: Docker-ready, SMTP configurabile
+---
 
-## User Personas
-1. **Supervisore**: Accesso completo, gestione utenti, report executive, audit log
-2. **Gestore**: CRUD operativo su immobili/contratti/pagamenti/documenti
-3. **Solo-lettura**: Consultazione dati senza modifiche
+## 📋 Descrizione Prodotto
 
-## Core Requirements (Implementati)
-- [x] Autenticazione JWT con refresh token
-- [x] RBAC (Role-Based Access Control)
-- [x] Dashboard problemi-first con KPI
-- [x] Mappa interattiva con marker colorati (rosso/giallo/verde/grigio)
-- [x] Gestione Immobili con geocodifica Nominatim
-- [x] Gestione Unità immobiliari
-- [x] Gestione Contratti con generazione rate automatica
-- [x] Gestione Soggetti (locatori/affittuari)
-- [x] Sistema Pagamenti/Rate con tracking ritardi
-- [x] Valutazione reputazionale affittuari
-- [x] Eventi critici
-- [x] Sistema notifiche (in-memory scheduler)
-- [x] Audit logging
-- [x] API RESTful completa (/api/v1/*)
-- [x] UI completamente in Italiano
+**EstateWise** è una web app enterprise per la gestione completa degli affitti immobiliari. Permette di gestire contratti, incassi, notifiche automatiche, documenti e molto altro.
 
-## Cosa è Stato Implementato (Gen 2026)
+---
 
-### Backend (17 modelli MongoDB)
-- users, soggetti, immobili, unita, contratti, rate
-- documenti, valutazioni_affittuari, eventi_critici
-- verbali, variazioni, spese, interventi
-- notifiche, audit_log, recessi
+## 🏗️ Stack Tecnologico
 
-### Frontend Pages
-- Login Page
-- Dashboard (KPI + problemi-first)
-- Mappa Interattiva (React-Leaflet + OpenStreetMap)
-- Immobili List + Form creazione
-- Contratti List
-- Soggetti List
-- Pagamenti con azione rapida incasso
+### Frontend
+- **Framework:** React 18 + Vite
+- **Styling:** Tailwind CSS + shadcn/ui
+- **State Management:** Zustand
+- **Forms:** React Hook Form + Zod
+- **Mappe:** React-Leaflet (OSM)
+- **Grafici:** Recharts
 
-### API Endpoints
-- /api/v1/auth/* (login, refresh, me, change-password)
-- /api/v1/users/* (CRUD utenti)
-- /api/v1/soggetti/* (CRUD soggetti)
-- /api/v1/immobili/* (CRUD + geocoding)
-- /api/v1/unita/* (CRUD unità)
-- /api/v1/contratti/* (CRUD + generazione rate)
-- /api/v1/rate/* (pagamenti + incasso)
-- /api/v1/documenti/* (upload + metadata)
-- /api/v1/valutazioni/* (rating affittuari)
-- /api/v1/mappa/markers (marker colorati)
-- /api/v1/dashboard/* (KPI + liste)
-- /api/v1/reports/* (export CSV/Excel)
-- /api/v1/health (status check)
+### Backend
+- **Framework:** FastAPI (Python 3.11)
+- **Database:** MongoDB
+- **Task Asincroni:** Celery + Redis + Beat
+- **PDF:** WeasyPrint (opzionale - richiede librerie di sistema)
+- **Auth:** JWT (passlib + bcrypt)
 
-## Prioritized Backlog
+### Deploy
+- **Container:** Docker Compose
+- **Reverse Proxy:** Nginx
+- **Servizi:** mongodb, redis, api, celery-worker, celery-beat, frontend, nginx
 
-### P0 (Immediato)
-- [x] MVP funzionante completato
+---
 
-### P1 (Alta priorità)
-- [ ] Wizard creazione contratto multi-step
-- [ ] Verbali consegna/riconsegna con checklist foto
-- [ ] Report PDF con WeasyPrint
-- [ ] Pagina dettaglio immobile
-- [ ] Pagina dettaglio contratto
-- [ ] Pagina dettaglio soggetto con rating completo
+## ✅ Funzionalità Implementate
 
-### P2 (Media priorità)
-- [ ] Variazioni contratto con diff
-- [ ] Executive Dashboard (solo supervisore)
-- [ ] Import Excel template
-- [ ] Gestione documenti scadenza
-- [ ] Interventi manutenzione
+### P0 - Critiche (COMPLETATE 2026-01-21)
 
-### P3 (Bassa priorità)
-- [ ] Webhook eventi per ERP
-- [ ] Full-text search avanzato
-- [ ] Permessi portafoglio per gestore
-- [ ] PWA con notifiche push
+#### P0-1: Sistema Notifiche con Celery+Redis+Beat ✅
+- Task schedulati per controllo scadenze
+- Escalation: rate ritardo (1, 7, 15 gg), scadenze contratto (365, 30, 1 gg), documenti (30, 7 gg)
+- Deduplicazione con idempotency_key
+- Email SMTP con graceful degradation
+- Pagina frontend /notifiche con stats e azioni
+- Trigger manuale per supervisori
 
-## Credenziali Default
-- Email: admin@estatewise.it
-- Password: admin123
-- Ruolo: Supervisore
-- Nota: Al primo accesso richiede cambio password
+#### P0-2: Mappa con fitBounds ✅
+- React-Leaflet con OpenStreetMap
+- fitBounds automatico su tutti i marker
+- Padding 40px, maxZoom 16
+- Gestione 1 marker (setView zoom 15)
+- Gestione 0 marker (placeholder)
+- Legenda con stati: Critico, Attenzione, OK, Non locato
 
-## Next Steps
-1. Implementare wizard contratto multi-step
-2. Aggiungere verbali consegna/riconsegna
-3. Generazione PDF report con WeasyPrint
-4. Completare pagine dettaglio
+#### P0-3: Wizard Contratto Multi-step ✅
+- 6 step: Unità, Locatore, Affittuario, Termini, Reminder, Conferma
+- Generazione rate automatiche (mensile/trimestrale/annuale)
+- Aggiornamento stato unità a "locata"
+- Preview rating affittuario
+- Upload documento firmato
+- Navigazione avanti/indietro con validazione
+
+### Funzionalità Core Implementate
+- **Autenticazione:** Login JWT con ruoli (supervisore, gestore, lettura)
+- **Immobili:** CRUD completo con geolocalizzazione
+- **Unità:** CRUD con stati (libera, locata, manutenzione)
+- **Contratti:** CRUD con stati e rate automatiche
+- **Soggetti:** CRUD locatori e affittuari
+- **Pagamenti/Rate:** Lista, filtri, funzione Incassa
+- **Dashboard:** KPI cards, scadenze, problemi
+- **Audit Log:** Tracciamento modifiche
+
+---
+
+## 🔜 Backlog (P1/P2)
+
+### P1 - Importanti
+- [ ] Verbali consegna/riconsegna con checklist e foto
+- [ ] Report PDF con WeasyPrint (fascicolo contratto, scheda immobile, report pagamenti)
+- [ ] Pagine dettaglio complete (Immobile, Contratto, Soggetto)
+- [ ] Sistema valutazione affittuari
+
+### P2 - Prossimi
+- [ ] docker-compose.yml aggiornato con tutti i servizi
+- [ ] README.md con documentazione completa
+- [ ] Dashboard Executive per Supervisore
+- [ ] Audit Log Viewer
+- [ ] Template email personalizzabili
+- [ ] Import/Export Excel
+
+### Future
+- [ ] Webhook per integrazioni esterne
+- [ ] Permessi per portafoglio
+- [ ] Connessioni DB esterne
+- [ ] Multi-tenancy
+
+---
+
+## 🧪 Test
+
+### Backend Tests (22/22 passed)
+- Health check, Auth, Notifiche, Mappa, Contratti, Rate, Dashboard, Immobili, Unità
+- File: `/app/tests/test_estatewise_p0.py`
+
+### Frontend Tests
+- Tutte le pagine P0 testate via Playwright
+- Login, Notifiche, Mappa, Wizard Contratto, Pagamenti
+
+---
+
+## 🔐 Credenziali Test
+
+```
+Email: admin@estatewise.it
+Password: admin123
+Ruolo: supervisore
+```
+
+---
+
+## 📂 Struttura File
+
+```
+/app/
+├── backend/
+│   ├── celery_app.py          # Configurazione Celery+Beat
+│   ├── server.py              # FastAPI app principale
+│   ├── models/                # Modelli Pydantic
+│   ├── routers/               # API endpoints
+│   ├── tasks/                 # Celery tasks
+│   │   └── notifications.py   # Task notifiche con escalation
+│   ├── templates/pdf/         # Template HTML per WeasyPrint
+│   └── utils/                 # Utilities (auth, email, geocoding)
+├── frontend/
+│   ├── src/
+│   │   ├── pages/             # Pagine React
+│   │   │   ├── NotifichePage.jsx
+│   │   │   ├── MappaPage.jsx
+│   │   │   ├── ContrattoWizardPage.jsx
+│   │   │   └── PagamentiPage.jsx
+│   │   ├── components/ui/     # shadcn/ui components
+│   │   └── stores/            # Zustand stores
+│   └── package.json
+├── docker-compose.yml         # Stack completo
+├── nginx/nginx.conf           # Reverse proxy config
+└── test_reports/              # Report test automatici
+```
+
+---
+
+## ⚠️ Note Tecniche
+
+1. **SMTP:** Se non configurato, le notifiche email vengono marcate "failed" senza crash
+2. **WeasyPrint:** Richiede librerie di sistema (libpangoft2). Se assenti, PDF non disponibili
+3. **Redis/Celery:** Se non disponibili, task notifiche eseguiti in modo sincrono
+4. **Select shadcn/ui:** Non usare `value=""` vuoto, usare `value="all"` o simile
+
+---
+
+## 📈 Metriche Chiave
+
+- **4 Immobili** con coordinate per test mappa
+- **1 Unità** (stato: locata)
+- **2 Soggetti** (1 azienda locatore, 1 persona affittuario)
+- **1 Contratto attivo** con 12 rate mensili
+- **4 Notifiche** generate per test
