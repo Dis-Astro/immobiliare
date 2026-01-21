@@ -212,7 +212,19 @@ export default function ContrattoWizardPage() {
       toast.success('Contratto creato con successo!');
       navigate(`/contratti/${response.data.id}`);
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Errore nella creazione del contratto');
+      // Handle different error formats
+      let errorMsg = 'Errore nella creazione del contratto';
+      if (error.response?.data?.detail) {
+        const detail = error.response.data.detail;
+        if (typeof detail === 'string') {
+          errorMsg = detail;
+        } else if (Array.isArray(detail)) {
+          errorMsg = detail.map(e => e.msg || e.message || JSON.stringify(e)).join(', ');
+        } else if (typeof detail === 'object') {
+          errorMsg = detail.msg || detail.message || JSON.stringify(detail);
+        }
+      }
+      toast.error(errorMsg);
     } finally {
       setSubmitting(false);
     }
