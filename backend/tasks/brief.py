@@ -32,8 +32,10 @@ async def _run_brief_async(force: bool = False) -> dict:
                 return {"skipped": "disabled"}
 
             now = datetime.now(TZ)
-            if now.hour != config.get("cron_hour", 8):
-                return {"skipped": f"hour {now.hour} != {config.get('cron_hour', 8)}"}
+            cfg_hour = config.get("cron_hour", 8)
+            cfg_minute = config.get("cron_minute", 0)
+            if now.hour != cfg_hour or now.minute != cfg_minute:
+                return {"skipped": f"time {now.hour:02d}:{now.minute:02d} != {cfg_hour:02d}:{cfg_minute:02d}"}
 
             # Idempotenza: non inviare due volte nello stesso giorno
             today = now.date().isoformat()

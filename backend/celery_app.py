@@ -71,12 +71,12 @@ celery_app.conf.beat_schedule = {
         'task': 'tasks.notifications.retry_failed_notifications',
         'schedule': crontab(minute='*/30'),
     },
-    # Brief mattutino AI: il task viene chiamato ogni ora al minuto 5,
-    # poi al suo interno verifica se l'ora corrente corrisponde a quella configurata
-    # in DB (config.brief_config.cron_hour) e se è abilitato.
-    'send-morning-brief-hourly-check': {
+    # Brief mattutino AI: il task viene chiamato ogni minuto;
+    # al suo interno verifica se (ora, minuto) corrispondono a quanto configurato
+    # in DB (config.brief_config.cron_hour/cron_minute) e se è abilitato.
+    'send-morning-brief-check': {
         'task': 'tasks.brief.send_morning_brief',
-        'schedule': crontab(minute=5),
+        'schedule': crontab(minute='*'),
     },
 }
 

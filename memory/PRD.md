@@ -63,6 +63,19 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 - **Bug fix backend**: `services/audit.py` ora sanitizza ricorsivamente `old_values`/`new_values` al WRITE time (rimuove `_id` e converte `ObjectId`→str e `datetime`→ISO) — risolve definitivamente errore 500 su `GET /api/v1/audit` causato da MongoDB ObjectId non JSON-serializzabile
 - **Test**: backend 100% (12/12 + nuovo PUT /auth/me + change-password full cycle), frontend ~98% (8 nuove pagine, tutte funzionali)
 
+### 2026-05 — Brief AI mattutino via email (Completato)
+- **Backend**:
+  - `models/brief.py`: `BriefConfig`, `BriefConfigUpdate`, `BriefPreview` (Pydantic v2, EmailStr validation)
+  - `services/brief.py`: `aggregate_brief_data` (raccoglie rate in ritardo, APE in scadenza 90gg, contratti in scadenza 30gg, interventi aperti enriched con immobile/unità/affittuario), `generate_ai_summary` (chiama `services/ai_provider.send_chat_message` con prompt strutturato in italiano + fallback statico se AI non disponibile), `render_brief_html` (email template responsive con sezioni colorate), `render_brief_text` (versione plain), `build_brief` (combina tutto)
+  - `routers/brief.py`: 4 endpoint — `GET /api/v1/brief/config`, `PUT /api/v1/brief/config` (solo supervisore), `POST /api/v1/brief/preview` (anteprima HTML+stats), `POST /api/v1/brief/send-now` (invia subito ai destinatari, persiste `last_sent_at`/`last_status`/`last_error`)
+  - `tasks/brief.py`: Celery task `send_morning_brief` con event-loop async (`asyncio.run`+`AsyncIOMotorClient`), idempotenza giornaliera (non rinvia se già inviato lo stesso giorno con status success/partial), check `(hour, minute) == (cron_hour, cron_minute)` in TZ Europe/Rome, `force=True` skip dei check
+  - `celery_app.py`: schedule `send-morning-brief-check` con `crontab(minute='*')` — gira ogni minuto, il task stesso filtra in base alla configurazione (cron_hour, cron_minute, enabled)
+  - `server.py`: registrato `brief_router`
+- **Frontend**: nuova tab **Brief AI** in `ImpostazioniPage` con componente `BriefSettings` — toggle abilitato, input ora/minuti, gestione lista email destinatari (add/remove con validazione), 4 checkbox sezioni (rate/APE/contratti/interventi), bottoni Salva/Anteprima (dialog con HTML preview + 4 stats badge)/Invia ora, pannello "Ultimo invio" con stato success/partial/error
+- **SMTP**: nessun cambiamento richiesto, `utils/email.py` con `aiosmtplib` già pronto. In dev senza `SMTP_HOST` configurato l'invio restituisce status='error' con messaggio chiaro (no crash). In produzione configurare `SMTP_HOST/SMTP_USER/SMTP_PASSWORD/SMTP_FROM/SMTP_PORT/SMTP_USE_TLS` nel `.env` backend.
+- **Default**: brief disabilitato di default, l'utente lo abilita esplicitamente da Impostazioni → Brief AI
+- **Test (iteration_6)**: 100% backend (15/15 pytest tests), 100% frontend (validazione email, preview dialog, salva, invia ora con error handling, pannello last_status)
+
 ## Architettura
 
 ```
@@ -128,13 +141,13 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 ## Roadmap (Backlog)
 
 ### P2
-- Notifica AI proattiva via email (es. brief mattutino con rate scadute, APE in scadenza, suggerimenti azioni)
 - Cron import/export multi-formato
 - Multi-tenancy (azienda)
 - Mobile-first verbali (PWA + camera per foto in checklist)
 - Integrazione bancaria per riconciliazione rate
 - AI Vision per leggere foto verbali e classificare automaticamente lo stato degli ambienti
 - A11y: aggiungere `DialogDescription` ai componenti `<DialogContent>` per evitare warning console
+- Brief AI: ottimizzare `aggregate_brief_data` con `$lookup` o batch `$in` per evitare N+1 query MongoDB su grossi volumi
 
 ## Credenziali Admin (seed automatico)
 - Email: `admin@estatewise.it`
