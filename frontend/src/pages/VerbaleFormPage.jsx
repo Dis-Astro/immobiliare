@@ -175,7 +175,7 @@ export default function VerbaleFormPage() {
     }
   };
 
-  if (loadingContratto) {
+  if (loadingContratto && contrattoId) {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         <Skeleton className="h-8 w-64" />

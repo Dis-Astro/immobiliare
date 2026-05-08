@@ -1,169 +1,138 @@
-# EstateWise - PRD (Product Requirements Document)
+# EstateWise — PRD (Product Requirements Document)
 
-## Versione: 1.1.0
-## Data ultimo aggiornamento: 2026-01-21
+## Original Problem Statement
+Costruire un gestionale immobiliare completo per gestione affitti con:
+- Multi-immobile, multi-unità, multi-contratto, multi-soggetto
+- Notifiche automatiche (rate scadute, contratti in scadenza, APE, documenti)
+- Generazione PDF (contratti, verbali, report)
+- Mappa interattiva immobili
+- Dashboard con KPI
+- Audit log completo
+- Sistema notifiche con escalation (Celery + Redis + Beat)
+- **Modulo APE** (Attestato Prestazione Energetica) per ogni unità con scadenza modificabile, sostituzione file, classe energetica
+- **Integrazione AI** (Ollama locale + Emergent LLM esterni: GPT-5.2/Claude/Gemini) configurabile dall'utente
+- **Autoinstaller Proxmox LXC** (`install.sh` one-shot, container privilegiato, nesting Docker)
 
----
+## Stack Tecnico
+- **Frontend**: React + Vite + TailwindCSS + shadcn/ui + Zustand + React-Leaflet
+- **Backend**: FastAPI + MongoDB (motor) + Pydantic v2
+- **Async**: Celery + Redis (Beat per cron escalation notifiche)
+- **AI**: Emergent LLM Key (OpenAI/Anthropic/Gemini) + Ollama locale
+- **Deploy**: Docker Compose stack su Proxmox LXC privilegiato (nesting, keyctl, apparmor unconfined)
 
-## 📋 Descrizione Prodotto
+## Implementato (Cronologia)
 
-**EstateWise** è una web app enterprise per la gestione completa degli affitti immobiliari. Permette di gestire contratti, incassi, notifiche automatiche, documenti e molto altro.
+### 2026-05 — P0 Core MVP (Completato)
+- Auth JWT, RBAC (supervisore/gestore/lettura)
+- CRUD Immobili, Unità, Soggetti, Contratti, Rate, Verbali, Documenti, Interventi
+- Dashboard KPI + Mappa interattiva
+- Audit log su tutte le mutazioni
+- Wizard contratto multi-step con generazione rate
+- Notifiche Celery+Redis con escalation idempotente
+- Pagine: Dashboard, Immobili (lista/detail), Unità, Soggetti, Contratti (wizard), Notifiche, Mappa
 
----
+### 2026-05 — P0 Deploy + AI + APE (Completato)
+- **install.sh / uninstall.sh** Proxmox LXC autoinstaller (792 righe), include nesting=1, keyctl=1, apparmor unconfined, bind mount `/srv/estatewise/{mongo,uploads,ollama}`, deploy stack Docker (mongo+api+worker+beat+redis+frontend+ollama), self-test finale, pull modello Ollama default `llama3.2:3b`
+- **Modulo APE completo**: 12 endpoint REST, modello con classe A4-G + zona climatica + EPgl,nren + certificatore + storico modifiche, upload PDF/immagine, rimando scadenza tracciato, sostituzione file, statistiche dashboard, marcatura "sostituito" su nuovo APE
+- **Integrazione AI**: 9 endpoint REST, switch Ollama/OpenAI/Anthropic/Gemini in DB (collection `config` key=`ai_config`), chat conversazionale con sessioni e cronologia, contesto app (immobili/contratti/rate/APE), generazione testo (email sollecito, clausola, disdetta, report), suggerimenti proattivi, analisi documento PDF (estrazione testo via pypdf + LLM), test connessione
+- **Frontend nuove pagine**: ApePage (CRUD+filtri+dialog rimando/sostituzione/storico+analisi AI), AiAssistantPage (sidebar sessioni+chat+genera testo), ImpostazioniPage (tab AI con provider+modello+temperature+test connessione)
+- **Routing**: ImmobileDetailPage e VerbaleFormPage collegati alle route, /ape, /ai, /impostazioni, /verbali/nuovo/:contrattoId
+- **WeasyPrint OS deps** aggiunte a backend Dockerfile (libpangoft2, libcairo2, libgdk-pixbuf, ecc.)
+- **Test backend**: 23/23 (100%) — APE create/update/upload/scadenza/file/delete/stats + AI config/chat/test/generate/suggest/analyze/sessions
+- **Test frontend**: ~90% — APE/AI/Impostazioni renderizzano correttamente, fix skeleton infinito su /verbali/nuovo
 
-## 🏗️ Stack Tecnologico
-
-### Frontend
-- **Framework:** React 18 + Vite
-- **Styling:** Tailwind CSS + shadcn/ui
-- **State Management:** Zustand
-- **Forms:** React Hook Form + Zod
-- **Mappe:** React-Leaflet (OSM)
-- **Grafici:** Recharts
-
-### Backend
-- **Framework:** FastAPI (Python 3.11)
-- **Database:** MongoDB
-- **Task Asincroni:** Celery + Redis + Beat
-- **PDF:** WeasyPrint (opzionale - richiede librerie di sistema)
-- **Auth:** JWT (passlib + bcrypt)
-
-### Deploy
-- **Container:** Docker Compose
-- **Reverse Proxy:** Nginx
-- **Servizi:** mongodb, redis, api, celery-worker, celery-beat, frontend, nginx
-
----
-
-## ✅ Funzionalità Implementate
-
-### P0 - Critiche (COMPLETATE 2026-01-21)
-
-#### P0-1: Sistema Notifiche con Celery+Redis+Beat ✅
-- Task schedulati per controllo scadenze
-- Escalation: rate ritardo (1, 7, 15 gg), scadenze contratto (365, 30, 1 gg), documenti (30, 7 gg)
-- Deduplicazione con idempotency_key
-- Email SMTP con graceful degradation
-- Pagina frontend /notifiche con stats e azioni
-- Trigger manuale per supervisori
-
-#### P0-2: Mappa con fitBounds ✅
-- React-Leaflet con OpenStreetMap
-- fitBounds automatico su tutti i marker
-- Padding 40px, maxZoom 16
-- Gestione 1 marker (setView zoom 15)
-- Gestione 0 marker (placeholder)
-- Legenda con stati: Critico, Attenzione, OK, Non locato
-
-#### P0-3: Wizard Contratto Multi-step ✅
-- 6 step: Unità, Locatore, Affittuario, Termini, Reminder, Conferma
-- Generazione rate automatiche (mensile/trimestrale/annuale)
-- Aggiornamento stato unità a "locata"
-- Preview rating affittuario
-- Upload documento firmato
-- Navigazione avanti/indietro con validazione
-
-### Funzionalità Core Implementate
-- **Autenticazione:** Login JWT con ruoli (supervisore, gestore, lettura)
-- **Immobili:** CRUD completo con geolocalizzazione
-- **Unità:** CRUD con stati (libera, locata, manutenzione)
-- **Contratti:** CRUD con stati e rate automatiche
-- **Soggetti:** CRUD locatori e affittuari
-- **Pagamenti/Rate:** Lista, filtri, funzione Incassa
-- **Dashboard:** KPI cards, scadenze, problemi
-- **Audit Log:** Tracciamento modifiche
-
----
-
-## 🔜 Backlog (P1/P2)
-
-### P1 - Importanti
-- [ ] Verbali consegna/riconsegna con checklist e foto
-- [ ] Report PDF con WeasyPrint (fascicolo contratto, scheda immobile, report pagamenti)
-- [ ] Pagine dettaglio complete (Immobile, Contratto, Soggetto)
-- [ ] Sistema valutazione affittuari
-
-### P2 - Prossimi
-- [ ] docker-compose.yml aggiornato con tutti i servizi
-- [ ] README.md con documentazione completa
-- [ ] Dashboard Executive per Supervisore
-- [ ] Audit Log Viewer
-- [ ] Template email personalizzabili
-- [ ] Import/Export Excel
-
-### Future
-- [ ] Webhook per integrazioni esterne
-- [ ] Permessi per portafoglio
-- [ ] Connessioni DB esterne
-- [ ] Multi-tenancy
-
----
-
-## 🧪 Test
-
-### Backend Tests (22/22 passed)
-- Health check, Auth, Notifiche, Mappa, Contratti, Rate, Dashboard, Immobili, Unità
-- File: `/app/tests/test_estatewise_p0.py`
-
-### Frontend Tests
-- Tutte le pagine P0 testate via Playwright
-- Login, Notifiche, Mappa, Wizard Contratto, Pagamenti
-
----
-
-## 🔐 Credenziali Test
-
-```
-Email: admin@estatewise.it
-Password: admin123
-Ruolo: supervisore
-```
-
----
-
-## 📂 Struttura File
+## Architettura
 
 ```
 /app/
 ├── backend/
-│   ├── celery_app.py          # Configurazione Celery+Beat
-│   ├── server.py              # FastAPI app principale
-│   ├── models/                # Modelli Pydantic
-│   ├── routers/               # API endpoints
-│   ├── tasks/                 # Celery tasks
-│   │   └── notifications.py   # Task notifiche con escalation
-│   ├── templates/pdf/         # Template HTML per WeasyPrint
-│   └── utils/                 # Utilities (auth, email, geocoding)
+│   ├── models/
+│   │   ├── ape.py (NUOVO - APE + storico modifiche)
+│   │   ├── ai_chat.py (NUOVO - AiConfig, ChatSession, ChatMessage)
+│   │   ├── notifica.py (idempotency_key)
+│   │   └── ... (immobile, unita, contratto, soggetto, rata, verbale, documento, intervento, audit, user)
+│   ├── routers/
+│   │   ├── ape.py (NUOVO - 12 endpoint)
+│   │   ├── ai.py (NUOVO - 9 endpoint)
+│   │   └── ... (auth, immobili, unita, contratti, soggetti, rate, verbali, documenti, interventi, notifiche, dashboard, audit, reports)
+│   ├── services/
+│   │   ├── ai_provider.py (NUOVO - Ollama + Emergent LLM switch)
+│   │   ├── audit.py
+│   │   └── notifications/
+│   ├── tasks/notifications.py
+│   ├── celery_app.py
+│   ├── server.py
+│   ├── Dockerfile (con WeasyPrint deps)
+│   └── requirements.txt (con emergentintegrations + pypdf)
 ├── frontend/
-│   ├── src/
-│   │   ├── pages/             # Pagine React
-│   │   │   ├── NotifichePage.jsx
-│   │   │   ├── MappaPage.jsx
-│   │   │   ├── ContrattoWizardPage.jsx
-│   │   │   └── PagamentiPage.jsx
-│   │   ├── components/ui/     # shadcn/ui components
-│   │   └── stores/            # Zustand stores
-│   └── package.json
-├── docker-compose.yml         # Stack completo
-├── nginx/nginx.conf           # Reverse proxy config
-└── test_reports/              # Report test automatici
+│   ├── src/pages/
+│   │   ├── ApePage.jsx (NUOVO)
+│   │   ├── AiAssistantPage.jsx (NUOVO)
+│   │   ├── ImpostazioniPage.jsx (NUOVO)
+│   │   ├── ImmobileDetailPage.jsx, VerbaleFormPage.jsx (collegate)
+│   │   └── ... (Dashboard, Login, Immobili, Unità, Soggetti, Contratti, Notifiche, Mappa)
+│   ├── components/Layout.jsx (con nav APE + Assistente AI)
+│   └── Dockerfile + nginx.conf
+├── docker-compose.yml
+├── install.sh (Proxmox LXC autoinstaller con Ollama + APE persistent storage)
+└── uninstall.sh
 ```
 
----
+## Endpoint Principali
 
-## ⚠️ Note Tecniche
+### APE
+- `GET /api/v1/ape` — lista filtrabile
+- `POST /api/v1/ape` — crea (no file)
+- `POST /api/v1/ape/upload` — crea con file (multipart)
+- `GET /api/v1/ape/{id}` / `PUT /api/v1/ape/{id}` / `DELETE /api/v1/ape/{id}`
+- `PUT /api/v1/ape/{id}/scadenza` — rimanda scadenza (motivazione tracciata)
+- `PUT /api/v1/ape/{id}/file` — sostituisce file
+- `GET /api/v1/ape/in-scadenza?giorni=90`
+- `GET /api/v1/ape/scaduti`
+- `GET /api/v1/ape/by-unita/{unita_id}`
+- `GET /api/v1/ape/stats/dashboard`
 
-1. **SMTP:** Se non configurato, le notifiche email vengono marcate "failed" senza crash
-2. **WeasyPrint:** Richiede librerie di sistema (libpangoft2). Se assenti, PDF non disponibili
-3. **Redis/Celery:** Se non disponibili, task notifiche eseguiti in modo sincrono
-4. **Select shadcn/ui:** Non usare `value=""` vuoto, usare `value="all"` o simile
+### AI
+- `GET/PUT /api/v1/ai/config` — config provider
+- `POST /api/v1/ai/chat` — chat con session
+- `GET /api/v1/ai/sessions` — lista sessioni utente
+- `GET /api/v1/ai/sessions/{id}/messages`
+- `DELETE /api/v1/ai/sessions/{id}`
+- `POST /api/v1/ai/test-connection`
+- `POST /api/v1/ai/generate` — testi predefiniti
+- `POST /api/v1/ai/suggest` — suggerimenti proattivi
+- `POST /api/v1/ai/analyze-document` — analisi PDF (ape_id o documento_id)
 
----
+## Roadmap (Backlog)
 
-## 📈 Metriche Chiave
+### P1
+- Implementare logica reale generazione PDF con WeasyPrint (rimuovere fallback in `routers/reports.py` ora che le librerie OS sono nel Dockerfile)
+- Lista Verbali (pagina /verbali è ancora placeholder)
+- Pagina Documenti (/documenti placeholder)
+- Pagina Manutenzione/Interventi (/manutenzione placeholder)
+- Notifica scadenza APE in `tasks/notifications.py` (job esiste per documenti, estendere ad APE)
+- Selettore contratto in VerbaleFormPage quando contrattoId non passato
+- Notifica APE scaduto via Celery Beat
 
-- **4 Immobili** con coordinate per test mappa
-- **1 Unità** (stato: locata)
-- **2 Soggetti** (1 azienda locatore, 1 persona affittuario)
-- **1 Contratto attivo** con 12 rate mensili
-- **4 Notifiche** generate per test
+### P2
+- Pagine: Report, Audit log viewer, Profilo, Cambio password
+- Dettaglio Contratto/Soggetto (route attive ma PlaceholderPage)
+- Cron import/export multi-formato
+- Multi-tenancy (azienda)
+- Mobile-first verbali (PWA + camera)
+- Integrazione bancaria per riconciliazione rate
+- AI Vision per leggere foto verbali e classificare automaticamente lo stato degli ambienti
+
+## Credenziali Admin (seed automatico)
+- Email: `admin@estatewise.it`
+- Password: `admin123`
+- Ruolo: supervisore
+
+## File chiavi env
+- `/app/backend/.env`: MONGO_URL, DB_NAME, EMERGENT_LLM_KEY, OLLAMA_URL
+- `/app/frontend/.env`: REACT_APP_BACKEND_URL
+
+## Note tecniche
+- AI: provider default in DB è `ollama` ma se Ollama non raggiungibile → fallisce 503. In dev senza Ollama, switch a `openai` via PUT /ai/config
+- Storage uploads: `/data/uploads/{ape,documenti,foto_verbali}` → bind mount LXC `/srv/estatewise/uploads`
+- Ollama in produzione gira come servizio Docker `estatewise-ollama:11434` con volume `/srv/estatewise/ollama` per modelli

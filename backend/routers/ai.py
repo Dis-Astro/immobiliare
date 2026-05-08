@@ -137,11 +137,12 @@ async def chat(
     # Recupera o crea sessione
     session_id = payload.session_id
     if not session_id:
+        provider_str = config.get("provider", "ollama")
         new_session = ChatSession(
             user_id=current_user.id,
             titolo=payload.message[:60] + ("..." if len(payload.message) > 60 else ""),
-            provider=AiProvider(config.get("provider", "ollama")),
-            model=config.get("ollama_model" if config.get("provider") == "ollama" else "external_model")
+            provider=AiProvider(provider_str),
+            model=config.get("ollama_model") if provider_str == "ollama" else config.get("external_model")
         )
         doc = new_session.model_dump()
         doc["created_at"] = doc["created_at"].isoformat()

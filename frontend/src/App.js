@@ -223,6 +223,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/verbali/nuovo/:contrattoId" 
+            element={
+              <ProtectedRoute>
+                <VerbaleFormPage />
+              </ProtectedRoute>
+            } 
+          />
 
           {/* APE */}
           <Route 
