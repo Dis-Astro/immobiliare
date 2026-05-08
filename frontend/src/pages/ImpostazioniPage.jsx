@@ -14,7 +14,7 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger
 } from '../components/ui/tabs';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from '../components/ui/dialog';
 import {
   Sparkles, Server, CheckCircle2, XCircle, Loader2, Cpu, Cloud, Mail,
@@ -553,6 +553,7 @@ function BriefSettings({ isSupervisore }) {
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Anteprima Brief Mattutino</DialogTitle>
+            <DialogDescription>Anteprima del messaggio email che verrebbe inviato ai destinatari configurati.</DialogDescription>
           </DialogHeader>
           {previewStats && (
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">

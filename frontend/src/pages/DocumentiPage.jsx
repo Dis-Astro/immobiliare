@@ -196,6 +196,7 @@ export default function DocumentiPage() {
               <Sparkles className="w-5 h-5 text-purple-500" />
               {aiResult.title}
             </DialogTitle>
+            <DialogDescription>Sintesi generata dall'AI sul contenuto del documento.</DialogDescription>
           </DialogHeader>
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <pre className="whitespace-pre-wrap text-sm bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">{aiResult.content}</pre>

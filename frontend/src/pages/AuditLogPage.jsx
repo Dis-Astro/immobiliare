@@ -13,7 +13,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from '../components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription
 } from '../components/ui/dialog';
 import {
   ScrollText, ChevronLeft, ChevronRight, Eye, Lock, RefreshCw
@@ -206,6 +206,7 @@ export default function AuditLogPage() {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Dettaglio Log</DialogTitle>
+            <DialogDescription>Informazioni complete sull'evento di audit, inclusi i valori prima e dopo la modifica.</DialogDescription>
           </DialogHeader>
           {selected && (
             <div className="space-y-4 text-sm">

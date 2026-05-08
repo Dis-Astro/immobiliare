@@ -489,6 +489,7 @@ export default function ApePage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>Storico modifiche APE</DialogTitle>
+            <DialogDescription>Cronologia delle modifiche di scadenza e sostituzione file con motivazione e autore.</DialogDescription>
           </DialogHeader>
           <div className="space-y-3 max-h-96 overflow-y-auto">
             {editingApe?.storico_modifiche?.length === 0 ? (
@@ -517,6 +518,7 @@ export default function ApePage() {
               <Sparkles className="w-5 h-5 text-purple-500" />
               {aiResult.title}
             </DialogTitle>
+            <DialogDescription>Analisi generata dall'AI sull'APE selezionato.</DialogDescription>
           </DialogHeader>
           <div className="prose prose-sm dark:prose-invert max-w-none">
             <pre className="whitespace-pre-wrap text-sm bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">{aiResult.content}</pre>
