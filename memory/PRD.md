@@ -49,6 +49,20 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 - **UX miglioramento**: sostituiti `alert()` con Dialog componente per visualizzare risultati AI in DocumentiPage e ApePage
 - **Test**: backend P1 100% (reports + Celery APE + sync fallback), frontend ~95% (3 pagine + regressione)
 
+### 2026-05 — P2 Pagine finali + Profilo (Completato)
+- **Backend**: nuovo endpoint `PUT /api/v1/auth/me` (aggiorna nome/email utente loggato, valida email duplicate)
+- **Frontend nuove pagine** (sostituito `<PlaceholderPage />` in `App.js` per tutte le route):
+  - **ReportPage** (`/report`) — Tab Pagamenti con export PDF/CSV/Excel via blob download + Tab Executive con KPI patrimonio/finanze/profit-loss mensile (solo supervisore)
+  - **AuditLogPage** (`/audit`) — viewer log con filtri tabella/azione, paginazione (25 per pagina), dialog dettaglio con JSON formattato old/new values (solo supervisore)
+  - **ProfiloPage** (`/profilo`) — visualizzazione + modifica nome/email, info ruolo/stato/last_login, link a cambio password
+  - **CambioPasswordPage** (`/cambio-password`) — form 3 campi con validazione live (8+ caratteri/maiuscola/numero/speciale), toggle visibilità password
+  - **ContrattoDetailPage** (`/contratti/:id`) — dati contratto enriched, KPI rate, tab Anagrafica/Rate/Verbali, download PDF, chiudi contratto, nuovo verbale
+  - **SoggettoDetailPage** (`/soggetti/:id`) — dati anagrafici + rating stelle, tab contratti come affittuario+locatore con badge ruolo
+  - **SoggettoFormPage** (`/soggetti/nuovo` e `/soggetti/:id/modifica`) — form persona/azienda con validazione CF/P.IVA condizionale
+- **VerbaleFormPage**: aggiunto **selettore contratto** quando `contrattoId` non passato in URL (combobox con codice+affittuario+immobile/unità), bottone Salva disabled finché non si seleziona
+- **Bug fix backend**: `services/audit.py` ora sanitizza ricorsivamente `old_values`/`new_values` al WRITE time (rimuove `_id` e converte `ObjectId`→str e `datetime`→ISO) — risolve definitivamente errore 500 su `GET /api/v1/audit` causato da MongoDB ObjectId non JSON-serializzabile
+- **Test**: backend 100% (12/12 + nuovo PUT /auth/me + change-password full cycle), frontend ~98% (8 nuove pagine, tutte funzionali)
+
 ## Architettura
 
 ```
@@ -114,15 +128,13 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 ## Roadmap (Backlog)
 
 ### P2
-- Pagine: Report (export Excel/CSV con UI), Audit log viewer, Profilo utente, Cambio password
-- Dettaglio Contratto/Soggetto (route attive ma PlaceholderPage)
-- Selettore contratto in VerbaleFormPage quando contrattoId non passato (oggi richiede navigazione da contratto detail)
 - Notifica AI proattiva via email (es. brief mattutino con rate scadute, APE in scadenza, suggerimenti azioni)
 - Cron import/export multi-formato
 - Multi-tenancy (azienda)
 - Mobile-first verbali (PWA + camera per foto in checklist)
 - Integrazione bancaria per riconciliazione rate
 - AI Vision per leggere foto verbali e classificare automaticamente lo stato degli ambienti
+- A11y: aggiungere `DialogDescription` ai componenti `<DialogContent>` per evitare warning console
 
 ## Credenziali Admin (seed automatico)
 - Email: `admin@estatewise.it`
