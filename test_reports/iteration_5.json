@@ -1,0 +1,73 @@
+{
+  "summary": "Iteration 5 testing complete. Backend: 12/13 passed (1 skip - no second user; PUT /auth/me, change-password, reports, audit, soggetti, contratti detail all OK). Fixed 1 backend bug: GET /api/v1/audit returned 500 due to bson.ObjectId in old_values/new_values dicts. Frontend: All 8 new pages render and work (Report tabs+CSV/PDF/Excel buttons, Audit Log dialog with full JSON detail, Profilo with persistence, Cambio Password with 8-char validation toast, Contratto detail with KPI/tabs/Scarica PDF/Nuovo Verbale, Soggetto detail with stars/badges, Soggetto form create+edit with pre-population, VerbaleFormPage selector shown only when contrattoId missing, regression OK when contrattoId in URL).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/v1/audit", "issue": "FIXED by testing agent: returned 500 PydanticSerializationError 'Unable to serialize unknown type bson.ObjectId'. old_values/new_values stored MongoDB documents with embedded ObjectId references. Added recursive _clean() that strips _id and stringifies any ObjectId. Also fixed user enrich projection to exclude _id."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "DialogContent (Audit detail + others)", "issues": ["Console warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. Non-blocking but a11y improvement recommended (add DialogDescription)."]}
+    ]
+  },
+  "passed_tests": {
+    "backend": [
+      "GET /auth/me: returns admin user data (no password_hash, no _id)",
+      "PUT /auth/me: updates nome and persists; returns sanitized user doc",
+      "PUT /auth/me with same email: 200",
+      "POST /auth/change-password: rejects wrong current pwd with 400 'Password attuale non corretta'",
+      "POST /auth/change-password full cycle: admin123 -> TempPass123! -> admin123 with re-login between steps",
+      "GET /reports/pagamenti?formato=csv: 200",
+      "GET /reports/executive: 200 with KPI dict",
+      "GET /audit: 200 (after fix)",
+      "GET /soggetti, /contratti, /contratti/{id}, /soggetti/{id}: 200"
+    ],
+    "frontend": [
+      "/report: Pagamenti+Executive tabs visible, Scarica PDF/CSV/Excel buttons present",
+      "/audit: 25 audit rows rendered, filter Tabella+Azione+Aggiorna present, eye-icon click opens 'Dettaglio Log' dialog with Tabella/Azione badge/Record ID/Utente/Timestamp/Valori precedenti JSON formatted",
+      "/profilo: input-nome pre-filled with 'Amministratore', btn-save-profile click triggers PUT /auth/me; after page reload, persisted name still present",
+      "/cambio-password: 3 password inputs + strength indicators (8+ caratteri/Maiuscola/Numero/Carattere speciale); short pwd shows toast 'La nuova password deve avere almeno 8 caratteri'",
+      "/contratti/{id}: tabs Anagrafica/Rate/Verbali, KPI rate (Incassate/In ritardo), Locatore+Affittuario badges, Immobile+Unità info, Scarica PDF button, Nuovo Verbale button -> navigates to /verbali/nuovo/{cid}",
+      "/soggetti/{id}: Anagrafica/Contratti tabs, Codice Fiscale/IBAN/PEC fields visible, 7 star icons (rating component), Locatore badge in Contratti tab",
+      "/soggetti/nuovo: input-nome+select-tipo+input-cf rendered, btn-submit-soggetto clickable; backend correctly returns 400 'Codice fiscale già registrato' for duplicate CF",
+      "/soggetti/{id}/modifica: form pre-populated ('Immobiliare SRL', tipo Azienda, CF/P.IVA/email/IBAN values shown)",
+      "/verbali/nuovo (no cid): select-contratto VISIBLE, save button DISABLED; after selecting contratto, save ENABLES and info box (Immobile/Affittuario) appears",
+      "/verbali/nuovo/{cid}: select-contratto NOT shown (regression OK)"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration5.py",
+    "/app/test_reports/pytest/iteration_5_results.xml"
+  ],
+  "action_items": [
+    "Frontend ProfiloPage: success toast not visible after save (the alert/toast component may not be invoked). Backend persisted correctly, but UX feedback is missing. Verify toast state binding.",
+    "Add DialogDescription to all Dialog components (Dettaglio Log, etc.) to fix a11y console warnings.",
+    "(Optional) Audit log: consider sanitizing old_values/new_values at WRITE time in services/audit.py instead of at READ time, to avoid storing ObjectIds in MongoDB at all. This would reduce per-request cost and prevent future serialization issues."
+  ],
+  "critical_code_review_comments": [
+    "BUG (FIXED): /app/backend/routers/audit.py - GET /audit response contained MongoDB ObjectIds nested inside old_values/new_values causing PydanticSerializationError. Root cause: callers (e.g. APE delete handler) snapshot the full Mongo document including _id ObjectId before serializing. Fixed by recursive _clean() at READ time that strips _id and stringifies ObjectIds.",
+    "/app/backend/services/audit.py log_audit accepts arbitrary Dict[str, Any] for old_values/new_values without validating that values are JSON-serializable. Recommend using bson.json_util.dumps(...).loads(...) round-trip OR explicit projection in callers to exclude _id.",
+    "/app/backend/routers/audit.py user enrich query uses projection {nome:1} which by default still returns _id (harmless because only nome is read, but inconsistent). Now fixed to {_id:0, nome:1}.",
+    "/app/frontend/src/pages/ProfiloPage.jsx: backend save works but no visible success toast/notification was detected after click. Either the toast library isn't called, or the toast text doesn't include common Italian success keywords. Verify implementation."
+  ],
+  "updated_files": [
+    "/app/backend/routers/audit.py (sanitize ObjectId in old_values/new_values + projection fix)",
+    "/app/backend/tests/test_iteration5.py (new pytest suite, 13 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (12/12 passed, 1 skipped)",
+    "frontend": "~98% (all 8 new pages functional; only minor: profile success toast not visually detected, a11y DialogDescription missing)"
+  },
+  "test_credentials": {
+    "email": "admin@estatewise.it",
+    "password": "admin123 (verified restored to admin123 after change-password test)"
+  },
+  "seed_data_creation": "No persistent test data created. Soggetto creation test used a duplicate CF intentionally to verify validation. Profile name was modified+restored.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Audit endpoint at /api/v1/audit (also accessible at /audit via routing). Backend test file: /app/backend/tests/test_iteration5.py. The test_put_me_email_already_in_use test skips when no /utenti endpoint or when no second user exists; if you add user CRUD, it will exercise the 400 path. ContrattoDetailPage uses /contratti/{id} route (no /detail suffix). Profile success toast may need investigation - data persists but no toast detected.",
+  "rca of the issue": "Audit GET /audit 500: callers like routers/ape.py log delete with full Mongo doc as old_values; MongoDB docs from find() include _id (ObjectId). When stored in audit_log.old_values then retrieved and Pydantic-serialized, FastAPI fails because ObjectId has no JSON serializer. Reproduction: delete any APE then GET /api/v1/audit -> 500. Mitigation: recursive sanitize at GET time (DONE). Long-term: sanitize at WRITE time in services/audit.py."
+}

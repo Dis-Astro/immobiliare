@@ -35,6 +35,11 @@ class PasswordChange(BaseModel):
     new_password: str
 
 
+class ProfileUpdate(BaseModel):
+    nome: Optional[str] = None
+    email: Optional[str] = None
+
+
 # Dependency to get database
 async def get_db():
     from server import db
@@ -193,6 +198,27 @@ async def get_me(current_user: UserInDB = Depends(get_current_user)):
         "must_change_password": current_user.must_change_password,
         "last_login": current_user.last_login
     }
+
+
+@router.put("/me")
+async def update_me(
+    data: ProfileUpdate,
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Aggiorna profilo utente corrente (nome, email)."""
+    update_dict = data.model_dump(exclude_unset=True, exclude_none=True)
+    
+    if "email" in update_dict and update_dict["email"] != current_user.email:
+        existing = await db.users.find_one({"email": update_dict["email"], "id": {"$ne": current_user.id}})
+        if existing:
+            raise HTTPException(status_code=400, detail="Email già in uso")
+    
+    if update_dict:
+        await db.users.update_one({"id": current_user.id}, {"$set": update_dict})
+    
+    user_doc = await db.users.find_one({"id": current_user.id}, {"_id": 0, "password_hash": 0})
+    return user_doc
 
 
 @router.post("/change-password")

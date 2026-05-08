@@ -25,6 +25,13 @@ import ImpostazioniPage from './pages/ImpostazioniPage';
 import VerbaliListPage from './pages/VerbaliListPage';
 import DocumentiPage from './pages/DocumentiPage';
 import ManutenzionePage from './pages/ManutenzionePage';
+import ReportPage from './pages/ReportPage';
+import AuditLogPage from './pages/AuditLogPage';
+import ProfiloPage from './pages/ProfiloPage';
+import CambioPasswordPage from './pages/CambioPasswordPage';
+import ContrattoDetailPage from './pages/ContrattoDetailPage';
+import SoggettoDetailPage from './pages/SoggettoDetailPage';
+import SoggettoFormPage from './pages/SoggettoFormPage';
 
 // Protected Route component
 function ProtectedRoute({ children }) {
@@ -158,7 +165,7 @@ function App() {
             path="/contratti/:id" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Dettaglio Contratto" />
+                <ContrattoDetailPage />
               </ProtectedRoute>
             } 
           />
@@ -176,7 +183,7 @@ function App() {
             path="/soggetti/nuovo" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Nuovo Soggetto" />
+                <SoggettoFormPage />
               </ProtectedRoute>
             } 
           />
@@ -184,7 +191,15 @@ function App() {
             path="/soggetti/:id" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Dettaglio Soggetto" />
+                <SoggettoDetailPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/soggetti/:id/modifica" 
+            element={
+              <ProtectedRoute>
+                <SoggettoFormPage />
               </ProtectedRoute>
             } 
           />
@@ -280,7 +295,7 @@ function App() {
             path="/report" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Report" />
+                <ReportPage />
               </ProtectedRoute>
             } 
           />
@@ -290,7 +305,7 @@ function App() {
             path="/audit" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Audit Log" />
+                <AuditLogPage />
               </ProtectedRoute>
             } 
           />
@@ -320,7 +335,7 @@ function App() {
             path="/profilo" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Profilo Utente" />
+                <ProfiloPage />
               </ProtectedRoute>
             } 
           />
@@ -328,7 +343,7 @@ function App() {
             path="/cambio-password" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Cambio Password" />
+                <CambioPasswordPage />
               </ProtectedRoute>
             } 
           />

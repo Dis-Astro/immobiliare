@@ -33,11 +33,24 @@ async def list_audit_logs(
     
     logs = await db.audit_log.find(query, {"_id": 0}).sort("timestamp", -1).skip(skip).limit(limit).to_list(limit)
     
-    # Enrich with user name
+    from bson import ObjectId
+    def _clean(v):
+        if isinstance(v, ObjectId):
+            return str(v)
+        if isinstance(v, dict):
+            return {k: _clean(val) for k, val in v.items() if k != "_id"}
+        if isinstance(v, list):
+            return [_clean(x) for x in v]
+        return v
+    
+    # Enrich with user name & sanitize embedded ObjectIds in old_values/new_values
     for log in logs:
         if log.get("user_id"):
-            user = await db.users.find_one({"id": log["user_id"]}, {"nome": 1})
+            user = await db.users.find_one({"id": log["user_id"]}, {"_id": 0, "nome": 1})
             log["user_nome"] = user["nome"] if user else None
+        for key in ("old_values", "new_values"):
+            if log.get(key) is not None:
+                log[key] = _clean(log[key])
     
     return logs
 

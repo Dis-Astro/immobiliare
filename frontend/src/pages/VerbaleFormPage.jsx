@@ -76,10 +76,23 @@ export default function VerbaleFormPage() {
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);
   const [note, setNote] = useState('');
 
-  // Fetch contratto data
+  // Fetch contratto data (when contrattoId in URL)
   const { data: contratto, loading: loadingContratto } = useFetch(
     contrattoId ? `/contratti/${contrattoId}` : null
   );
+
+  // Fetch contracts list (for selector when contrattoId not in URL)
+  const { data: contrattiList, loading: loadingList } = useFetch(
+    contrattoId ? null : '/contratti?stato=attivo&limit=100'
+  );
+  const [selectedContrattoId, setSelectedContrattoId] = useState('');
+  const { data: selectedContratto } = useFetch(
+    !contrattoId && selectedContrattoId ? `/contratti/${selectedContrattoId}` : null
+  );
+
+  // Effective contratto/id used by the rest of the form
+  const effectiveContrattoId = contrattoId || selectedContrattoId;
+  const effectiveContratto = contratto || selectedContratto;
 
   const addAmbiente = () => {
     setChecklist(prev => [...prev, {
@@ -153,9 +166,13 @@ export default function VerbaleFormPage() {
   };
 
   const handleSubmit = async () => {
+    if (!effectiveContrattoId) {
+      toast.error('Seleziona un contratto prima di salvare');
+      return;
+    }
     try {
       const payload = {
-        contratto_id: contrattoId,
+        contratto_id: effectiveContrattoId,
         tipo,
         data,
         checklist: checklist.map(item => ({
@@ -169,7 +186,7 @@ export default function VerbaleFormPage() {
       
       await request('POST', '/verbali', payload);
       toast.success(`Verbale di ${tipo} creato con successo!`);
-      navigate(`/contratti/${contrattoId}`);
+      navigate(`/contratti/${effectiveContrattoId}`);
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Errore nella creazione del verbale');
     }
@@ -194,10 +211,39 @@ export default function VerbaleFormPage() {
         <div>
           <h1 className="text-2xl font-bold font-heading">Nuovo Verbale</h1>
           <p className="text-slate-500">
-            {contratto ? `Contratto ${contratto.codice_contratto}` : 'Verbale di consegna/riconsegna'}
+            {effectiveContratto ? `Contratto ${effectiveContratto.codice_contratto}` : 'Verbale di consegna/riconsegna'}
           </p>
         </div>
       </div>
+
+      {/* Contract selector when contrattoId missing */}
+      {!contrattoId && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Seleziona Contratto *</CardTitle>
+            <CardDescription>
+              Scegli il contratto attivo per cui creare il verbale.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Select value={selectedContrattoId} onValueChange={setSelectedContrattoId}>
+              <SelectTrigger data-testid="select-contratto">
+                <SelectValue placeholder={loadingList ? "Caricamento..." : "Seleziona un contratto"} />
+              </SelectTrigger>
+              <SelectContent>
+                {(contrattiList || []).map(c => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.codice_contratto} — {c.affittuario_nome || 'N/A'} ({c.immobile_titolo || 'N/A'} / {c.unita_codice || 'N/A'})
+                  </SelectItem>
+                ))}
+                {!loadingList && (!contrattiList || contrattiList.length === 0) && (
+                  <SelectItem value="none" disabled>Nessun contratto attivo</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Tipo e Data */}
       <Card>
@@ -229,24 +275,24 @@ export default function VerbaleFormPage() {
             </div>
           </div>
           
-          {contratto && (
+          {effectiveContratto && (
             <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <div>
                   <p className="text-slate-500">Immobile</p>
-                  <p className="font-medium">{contratto.immobile_titolo}</p>
+                  <p className="font-medium">{effectiveContratto.immobile_titolo}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Unità</p>
-                  <p className="font-medium">{contratto.unita_codice}</p>
+                  <p className="font-medium">{effectiveContratto.unita_codice}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Affittuario</p>
-                  <p className="font-medium">{contratto.affittuario_nome}</p>
+                  <p className="font-medium">{effectiveContratto.affittuario_nome}</p>
                 </div>
                 <div>
                   <p className="text-slate-500">Locatore</p>
-                  <p className="font-medium">{contratto.locatore_nome}</p>
+                  <p className="font-medium">{effectiveContratto.locatore_nome}</p>
                 </div>
               </div>
             </div>
@@ -392,7 +438,7 @@ export default function VerbaleFormPage() {
         <Button variant="outline" onClick={() => navigate(-1)}>
           Annulla
         </Button>
-        <Button onClick={handleSubmit} disabled={submitting} data-testid="submit-verbale">
+        <Button onClick={handleSubmit} disabled={submitting || !effectiveContrattoId} data-testid="submit-verbale">
           {submitting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
