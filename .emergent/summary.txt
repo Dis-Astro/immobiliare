@@ -1,0 +1,153 @@
+<analysis>**original_problem_statement:** 
+L'utente richiede la creazione di un AUTOINSTALLER ONE-SHOT ( e opzionalmente ) per installare e avviare automaticamente l'app EstateWise su un nodo Proxmox (versione 8.x). Lo script deve creare un container LXC Ubuntu 22.04 privilegiato configurato specificamente per permettere l'uso di Docker al suo interno (nesting=1, keyctl=1, lxc.apparmor.profile: unconfined, allow_nesting). Deve configurare storage persistente sul nodo host, installare Docker e Docker Compose, clonare il repository, applicare eventuali patch necessarie e avviare lo stack. L'utente richiede ESPLICITAMENTE la consegna dei soli file, senza spiegazioni, output parziali o passaggi manuali. PRODUCT REQUIREMENTS includono la gestione chiara degli errori, test finale di raggiungibilità e stampa dell'IP del container.
+
+**User's preferred language**: Italiano (INSTRUCT next agent to respond in Italian only).
+
+**what currently exists?** 
+L'applicazione core (P0) è stata completata e testata con successo (Frontend React, Backend FastAPI, MongoDB, notifiche asincrone tramite Celery+Redis). L'agente precedente ha creato i file 
+===============================================================================
+  EstateWise AutoInstaller for Proxmox VE
+  One-shot installation script
+===============================================================================
+
+
+[0;32m==> Validating environment[0m
+[0;31m[ERROR][0m This script must be run on a Proxmox VE host e [0;31m[ERROR][0m This script must be run on a Proxmox VE host e li ha resi eseguibili, ma non ne ha verificato il contenuto rispetto alle direttive stringenti dell'utente né ha concluso il task.
+
+**Last working item**:
+- **Last item agent was working:** Creazione e validazione degli script bash  e  per il deployment automatizzato su Proxmox. L'agente ha generato i file ma il processo si è interrotto prima di poter controllare la correttezza del codice Bash e concludere con il tool .
+- **Status:** IN PROGRESS
+- **Agent Testing Done:** N 
+- **Which testing method agent to use?** NA (L'esecuzione di comandi host Proxmox come  non può essere testata all'interno del container Kubernetes attuale. È richiesta una rigorosa revisione statica del codice per verificare che tutti i 9 requisiti del messaggio 147 siano stati implementati).
+- **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+- **Issue 1: WeasyPrint necessita di librerie di sistema OS (P1)**
+   - **Attempted fixes:** Durante i test del backend P0, la libreria WeasyPrint (per la generazione PDF) ha sollevato un errore . L'agente ha temporaneamente disabilitato la funzionalità vera e propria in  inserendo un blocco try-except per non far crashare l'app.
+   - **Next debug checklist:** Aggiungere l'installazione delle dipendenze di sistema necessarie (es. , , ecc.) all'interno del  del backend. Successivamente rimuovere il fallback in .
+   - **Why fix this issue and what will be achieved with the fix?** È un requisito obbligatorio per generare i PDF dei contratti e i vari report.
+   - **Status:** NOT STARTED
+   - **Is recurring issue?** N
+   - **Should Test frontend/backend/both after fix?** backend
+   - **Blocked on other issue:** None
+
+**In progress Task List**:
+- **Task 1: Revisione e Consegna Script Proxmox (P0)**
+   - **Where to resume:** Leggere il contenuto di 
+===============================================================================
+  EstateWise AutoInstaller for Proxmox VE
+  One-shot installation script
+===============================================================================
+
+
+[0;32m==> Validating environment[0m
+[0;31m[ERROR][0m This script must be run on a Proxmox VE host e [0;31m[ERROR][0m This script must be run on a Proxmox VE host. 
+   - **What will be achieved with this?** Assicurarsi che lo script includa i comandi corretti Proxmox (, ), aggiri le limitazioni di AppArmor per Docker (), esegua i mount , cloni il repo, e faccia un self-test finale. Se lo script è corretto, concludere il task senza fornire spiegazioni superflue all'utente.
+   - **Status:** IN PROGRESS
+   - **Should Test frontend/backend/both after fix?** NA
+   - **Blocked on something:** None
+
+**Upcoming and Future Tasks**
+  Upcoming Tasks:
+  - (P1) Implementare la logica reale di generazione PDF con WeasyPrint (dipende da Issue 1).
+  - (P1) Creare le pagine Verbali di Consegna/Riconsegna con checklist e upload foto (Frontend + API).
+  - (P1) Completare le Pagine di Dettaglio dinamiche (Immobile, Contratto, Soggetto).
+
+**Completed work in this session**
+- Notifiche Celery + Redis + Beat con logica di escalation e idempotenza in  /  (DONE)
+- Risoluzione bug  mappa in  (DONE)
+- Completamento Wizard Contratto multi-step con generazione rate automatiche (DONE)
+- Creazione dei file Docker base (, , ) (DONE)
+- Creazione bozza script  e  (IN PROGRESS)
+
+**Earlier issues found/mentioned but not fixed**
+- Nessuno (Il problema di import path alias nel frontend è stato aggirato ma non configurato ufficialmente, tuttavia non blocca il rilascio).
+
+**Known issue recurrence from previous fork**
+- Recurrence count: 0
+- Status: RESOLVED
+
+**Code Architecture**
+
+
+**Key Technical Concepts**
+- React, Vite, TailwindCSS, Zustand
+- FastAPI, MongoDB
+- Celery (Task Asincroni), Redis (Broker), Celery Beat (Cron)
+- Bash Scripting, Proxmox LXC API (), Docker AppArmor Bypass
+
+**key DB schema**
+- : { ...,  (per evitare doppie notifiche per lo stesso evento) }
+-  &  (collegate alla creazione nel wizard)
+
+**changes in tech stack**
+- Nessuna ulteriore deviazione. Celery e Redis sono stati integrati con successo come richiesto dall'utente.
+
+**All files of reference**
+- 
+===============================================================================
+  EstateWise AutoInstaller for Proxmox VE
+  One-shot installation script
+===============================================================================
+
+
+[0;32m==> Validating environment[0m
+[0;31m[ERROR][0m This script must be run on a Proxmox VE host e [0;31m[ERROR][0m This script must be run on a Proxmox VE host: File creati ma pendenti di revisione.
+- : Definisce stack MongoDB, API, Frontend, Redis, Worker, Beat.
+-  & : Per la build dei container.
+
+**Areas that need refactoring**:
+- : Il blocco try-except per  deve essere rimosso una volta installate le librerie OS.
+
+**key api endpoints**
+- 
+- 
+
+**Critical Info for New Agent**
+- **ATTENZIONE:** L'utente ha inserito una clausola anti-scorciatoia severissima. **NON** spiegare come funziona lo script, **NON** fornire step manuali e **NON** aggiungere commenti o documentazione testuale nel messaggio di risposta per il task . 
+- Il tuo unico compito immediato è validare che 
+===============================================================================
+  EstateWise AutoInstaller for Proxmox VE
+  One-shot installation script
+===============================================================================
+
+
+[0;32m==> Validating environment[0m
+[0;31m[ERROR][0m This script must be run on a Proxmox VE host e [0;31m[ERROR][0m This script must be run on a Proxmox VE host contengano la sintassi bash corretta e tutti i vincoli Proxmox richiesti nel messaggio 147. Se sono ok, usa il  tool per chiudere il task.
+- Non provare ad eseguire 
+===============================================================================
+  EstateWise AutoInstaller for Proxmox VE
+  One-shot installation script
+===============================================================================
+
+
+[0;32m==> Validating environment[0m
+[0;31m[ERROR][0m This script must be run on a Proxmox VE host nel container k8s attuale, fallirà perché mancano i comandi host Proxmox ().
+
+**documents and test reports created in this job**
+- /app/test_reports/iteration_2.json
+- /app/memory/PRD.md
+
+**Last 10 User Messages and any pending HUMAN messages** 
+- **Message 147 (LATEST - PENDING)**: L'utente richiede lo script  autoinstaller one-shot per Proxmox LXC. Fornisce requisiti tecnici stringenti (nesting, keyctl, apparmor, persistent volumes) e vieta risposte teoriche.
+- **Message 5**: L'utente conferma l'uso di MongoDB e richiede l'esecuzione in Italiano.
+
+**Project Health Check:**
+- Broken: PDF Generation (Mancano dipendenze OS backend).
+- Mocked: Nessuno (I P0 sono completamente reali).
+
+**3rd Party Integrations**
+N/A (React-Leaflet, Celery, Redis già integrati).
+
+**Testing status**
+- Testing agent used after significant changes: YES (Per i P0 di frontend e backend, test passato al 100%).
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created: N/A
+- Known regressions: Fallback temporaneo per generazione PDF a causa di WeasyPrint.
+
+**Credentials to test flow:**
+- Email: 
+- Password: 
+
+**What agent forgot to execute**
+L'agente ha creato i file  e , ma ha interrotto il processo prima di validare meticolosamente che il loro contenuto rispetti tutti i dettagli tecnici richiesti dall'utente per Proxmox (messaggio 147) e senza concludere il lavoro tramite il tool . Inoltre non ha incluso le dipendenze di sistema (OS) per WeasyPrint nel  del backend.</analysis>
