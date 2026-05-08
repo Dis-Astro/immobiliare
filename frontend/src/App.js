@@ -22,6 +22,9 @@ import VerbaleFormPage from './pages/VerbaleFormPage';
 import ApePage from './pages/ApePage';
 import AiAssistantPage from './pages/AiAssistantPage';
 import ImpostazioniPage from './pages/ImpostazioniPage';
+import VerbaliListPage from './pages/VerbaliListPage';
+import DocumentiPage from './pages/DocumentiPage';
+import ManutenzionePage from './pages/ManutenzionePage';
 
 // Protected Route component
 function ProtectedRoute({ children }) {
@@ -211,7 +214,7 @@ function App() {
             path="/verbali" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Verbali" />
+                <VerbaliListPage />
               </ProtectedRoute>
             } 
           />
@@ -257,7 +260,7 @@ function App() {
             path="/documenti" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Documenti" />
+                <DocumentiPage />
               </ProtectedRoute>
             } 
           />
@@ -267,7 +270,7 @@ function App() {
             path="/manutenzione" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Interventi Manutenzione" />
+                <ManutenzionePage />
               </ProtectedRoute>
             } 
           />

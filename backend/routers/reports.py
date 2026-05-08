@@ -1,6 +1,5 @@
 """
-Router Report con supporto opzionale per WeasyPrint.
-Se WeasyPrint non è disponibile, i report PDF restituiscono un messaggio di errore.
+Router Report con generazione PDF (WeasyPrint) ed export Excel/CSV/JSON.
 """
 
 from fastapi import APIRouter, HTTPException, Depends, Query
@@ -10,16 +9,9 @@ from datetime import date, datetime, timezone
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from jinja2 import Environment, FileSystemLoader
 from pathlib import Path
+from weasyprint import HTML, CSS
 import io
 import logging
-
-# Try to import WeasyPrint - it may fail if system dependencies are missing
-try:
-    from weasyprint import HTML, CSS
-    WEASYPRINT_AVAILABLE = True
-except (ImportError, OSError) as e:
-    WEASYPRINT_AVAILABLE = False
-    logging.warning(f"WeasyPrint not available: {e}. PDF generation disabled.")
 
 try:
     import pandas as pd
@@ -75,12 +67,6 @@ tr:nth-child(even) { background-color: #fafafa; }
 
 def generate_pdf(html_content: str) -> bytes:
     """Generate PDF from HTML using WeasyPrint."""
-    if not WEASYPRINT_AVAILABLE:
-        raise HTTPException(
-            status_code=503,
-            detail="Generazione PDF non disponibile. Librerie di sistema mancanti (WeasyPrint)."
-        )
-    
     html = HTML(string=html_content)
     pdf_bytes = html.write_pdf(stylesheets=[CSS(string=DEFAULT_CSS)])
     return pdf_bytes
@@ -90,11 +76,11 @@ def generate_pdf(html_content: str) -> bytes:
 async def get_report_status():
     """Check report generation capabilities."""
     return {
-        "pdf_available": WEASYPRINT_AVAILABLE,
+        "pdf_available": True,
         "excel_available": PANDAS_AVAILABLE,
         "csv_available": True,
         "json_available": True,
-        "message": "OK" if WEASYPRINT_AVAILABLE else "PDF generation requires system libraries. Install libpangoft2-1.0-0"
+        "message": "OK"
     }
 
 
@@ -105,9 +91,6 @@ async def get_contratto_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download contract PDF (fascicolo contratto)."""
-    if not WEASYPRINT_AVAILABLE:
-        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
-    
     contratto = await db.contratti.find_one({"id": contratto_id}, {"_id": 0})
     if not contratto:
         raise HTTPException(status_code=404, detail="Contratto non trovato")
@@ -166,9 +149,6 @@ async def get_immobile_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download property PDF (scheda immobile)."""
-    if not WEASYPRINT_AVAILABLE:
-        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
-    
     immobile = await db.immobili.find_one({"id": immobile_id}, {"_id": 0})
     if not immobile:
         raise HTTPException(status_code=404, detail="Immobile non trovato")
@@ -215,9 +195,6 @@ async def get_verbale_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download verbale PDF."""
-    if not WEASYPRINT_AVAILABLE:
-        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
-    
     verbale = await db.verbali.find_one({"id": verbale_id}, {"_id": 0})
     if not verbale:
         raise HTTPException(status_code=404, detail="Verbale non trovato")
@@ -266,9 +243,6 @@ async def get_pagamenti_pdf(
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
     """Generate and download payments report PDF."""
-    if not WEASYPRINT_AVAILABLE:
-        raise HTTPException(status_code=503, detail="PDF non disponibile - WeasyPrint non installato")
-    
     query = {}
     if periodo_da:
         query["periodo"] = {"$gte": periodo_da}

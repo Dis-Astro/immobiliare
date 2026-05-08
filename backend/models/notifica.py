@@ -17,6 +17,8 @@ class TipoNotifica(str, Enum):
     RATA_RITARDO = "rata_ritardo"
     DOC_SCADENZA = "doc_scadenza"
     EVENTO_CRITICO = "evento_critico"
+    APE_SCADENZA = "ape_scadenza"
+    APE_SCADUTO = "ape_scaduto"
     SISTEMA = "sistema"
 
 

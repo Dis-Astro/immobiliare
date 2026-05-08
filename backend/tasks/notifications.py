@@ -454,6 +454,127 @@ def check_eventi_critici():
     return f"Eventi critici: {len(eventi)}, notifiche: {notifications_created}"
 
 
+@celery_app.task(name='tasks.notifications.check_ape_scadenza')
+def check_ape_scadenza():
+    """
+    Controlla APE in scadenza con escalation: 90, 30, 7 giorni prima.
+    Notifica anche APE già scaduti (1 volta).
+    """
+    db = get_db()
+    today = date.today()
+    thresholds = [90, 30, 7]  # Giorni prima della scadenza
+
+    notifications_created = 0
+
+    # APE in scadenza alle threshold
+    for days in thresholds:
+        target_date = (today + timedelta(days=days)).isoformat()
+
+        ape_list = list(db.ape.find({
+            "data_scadenza": target_date,
+            "stato": {"$ne": "sostituito"}
+        }))
+
+        for ape in ape_list:
+            unita = db.unita.find_one({"id": ape["unita_id"]})
+            immobile = db.immobili.find_one({"id": unita["immobile_id"]}) if unita else None
+
+            users = list(db.users.find({
+                "ruolo": {"$in": ["supervisore", "gestore"]},
+                "attivo": True
+            }))
+
+            urgenza = "🔴 URGENTE" if days <= 7 else ("⚠️ Avviso" if days <= 30 else "📅 Promemoria")
+
+            for user in users:
+                idem_key = generate_idempotency_key("ape_scadenza", ape["id"], days)
+                immobile_titolo = immobile['titolo'] if immobile else 'N/A'
+                unita_codice = unita['codice_unita'] if unita else 'N/A'
+
+                result = create_notification(
+                    db,
+                    tipo="ape_scadenza",
+                    user_id=user["id"],
+                    titolo=f"{urgenza}: APE classe {ape['classe_energetica']} scade tra {days} giorni",
+                    messaggio=(
+                        f"L'APE dell'unità {unita_codice} ({immobile_titolo}) scadrà il {ape['data_scadenza']}. "
+                        f"Certificatore: {ape.get('certificatore_nome', 'N/A')}. "
+                        f"Provvedi al rinnovo."
+                    ),
+                    payload={
+                        "ape_id": ape["id"],
+                        "unita_id": ape["unita_id"],
+                        "giorni_rimanenti": days,
+                        "classe_energetica": ape["classe_energetica"],
+                        "data_scadenza": ape["data_scadenza"],
+                        "tipo_reminder": "ape_scadenza"
+                    },
+                    destinatario_email=user.get("email"),
+                    ref_type="ape",
+                    ref_id=ape["id"],
+                    idempotency_key=idem_key
+                )
+                if result:
+                    notifications_created += 1
+
+    # APE scaduti (notifica una volta sola, idempotency con marker -1)
+    ape_scaduti = list(db.ape.find({
+        "data_scadenza": {"$lt": today.isoformat()},
+        "stato": {"$ne": "sostituito"}
+    }))
+
+    for ape in ape_scaduti:
+        scadenza = date.fromisoformat(ape["data_scadenza"])
+        giorni_scaduto = (today - scadenza).days
+        if giorni_scaduto > 365:  # Limita a 1 anno per evitare flood
+            continue
+
+        unita = db.unita.find_one({"id": ape["unita_id"]})
+        immobile = db.immobili.find_one({"id": unita["immobile_id"]}) if unita else None
+
+        # Aggiorna stato APE
+        db.ape.update_one(
+            {"id": ape["id"]},
+            {"$set": {"stato": "scaduto"}}
+        )
+
+        users = list(db.users.find({
+            "ruolo": {"$in": ["supervisore", "gestore"]},
+            "attivo": True
+        }))
+
+        for user in users:
+            idem_key = generate_idempotency_key("ape_scaduto", ape["id"], -1)
+            immobile_titolo = immobile['titolo'] if immobile else 'N/A'
+            unita_codice = unita['codice_unita'] if unita else 'N/A'
+
+            result = create_notification(
+                db,
+                tipo="ape_scaduto",
+                user_id=user["id"],
+                titolo=f"🔴 APE SCADUTO da {giorni_scaduto} giorni - unità {unita_codice}",
+                messaggio=(
+                    f"L'APE dell'unità {unita_codice} ({immobile_titolo}) è scaduto il {ape['data_scadenza']}. "
+                    f"L'unità non è conforme: l'attestato è obbligatorio per locazioni e atti di vendita."
+                ),
+                payload={
+                    "ape_id": ape["id"],
+                    "unita_id": ape["unita_id"],
+                    "giorni_scaduto": giorni_scaduto,
+                    "tipo_reminder": "ape_scaduto"
+                },
+                destinatario_email=user.get("email"),
+                ref_type="ape",
+                ref_id=ape["id"],
+                idempotency_key=idem_key
+            )
+            if result:
+                notifications_created += 1
+
+    logger.info(f"Check APE scadenza completato: {notifications_created} notifiche")
+    return f"APE scadenze controllate, notifiche: {notifications_created}"
+
+
 @celery_app.task(name='tasks.notifications.retry_failed_notifications')
 def retry_failed_notifications():
     """
@@ -495,7 +616,10 @@ def trigger_manual_check(check_type: str = "all"):
     
     if check_type in ["documenti", "all"]:
         results.append(check_documenti_scadenza())
-    
+
+    if check_type in ["ape", "all"]:
+        results.append(check_ape_scadenza())
+
     if check_type in ["eventi", "all"]:
         results.append(check_eventi_critici())
     

@@ -1,0 +1,74 @@
+{
+  "summary": "P1 testing complete. Backend 17/17 passed (100%) after fixing 1 critical bug (TipoNotifica enum missing 'ape_scadenza'/'ape_scaduto' broke /notifiche endpoint with 500). All 3 new frontend pages (Verbali/Documenti/Manutenzione) render and function correctly. WeasyPrint PDF generation real (verified PDF magic header). Celery beat schedule has check-ape-scadenza-daily at 8:45. Task marks expired APEs as 'scaduto' and creates idempotent notifications.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "GET /api/v1/notifiche", "issue": "FIXED by testing agent: TipoNotifica enum in /app/backend/models/notifica.py was missing APE_SCADENZA and APE_SCADUTO. After check_ape_scadenza task created 'ape_scaduto' notifications, list endpoint returned 500 ResponseValidationError. Added enum values."},
+      {"endpoint": "POST /api/v1/notifiche/trigger-check?check_type=ape", "issue": "Synchronous fallback in routers/notifiche.py (when Celery/Redis is down) imports only check_rate_ritardo/check_scadenze_contratti/check_documenti_scadenza/check_eventi_critici - does NOT include check_ape_scadenza. So when type='ape' and Redis is unavailable, no APE check runs. Currently the .delay() path works (queues to Redis even when Celery worker isn't running) but if that fails, ape sync fallback is missing."},
+      {"endpoint": "Redis/Celery", "issue": "Redis is not reachable in this environment (Connection to Redis lost retries 1-20 in backend logs). Celery beat schedule won't actually run unless Redis is up. trigger-check uses .delay() which currently still returns task_id queued, but tasks never execute. Direct sync invocation of check_ape_scadenza() works."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "Select dev overlay", "issue": "Webpack runtime error overlay appears: 'A <Select.Item /> must have a value prop that is not an empty string'. Likely from one of new pages (Documenti/Manutenzione) where unita_id/contratto_id initialised as '' is somehow rendered as a SelectItem value. Doesn't crash app but shows red error overlay in dev mode.", "selector": "Select.Item with empty value", "priority": "MEDIUM"},
+      {"component": "Hydration warning", "issue": "<p> inside <div> nesting warning (pre-existing from iter 3, non-breaking)", "selector": "n/a", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": {
+    "backend_p1": [
+      "GET /reports/status returns pdf_available:true",
+      "GET /reports/contratto/{id}/pdf returns real PDF (magic %PDF-, >1KB)",
+      "GET /reports/verbale/{id}/pdf (skipped - no verbali in DB, but route exists)",
+      "tasks.notifications.check_ape_scadenza callable directly",
+      "celery_app.beat_schedule contains 'check-ape-scadenza-daily' -> task name correct",
+      "check_ape_scadenza marks expired APE stato='scaduto' and creates notifica with idempotency_key='ape_scaduto:{id}:-1'",
+      "POST /notifiche/trigger-check?check_type=ape -> 200 task queued",
+      "Regression: GET /verbali /documenti /interventi /immobili /unita /soggetti /contratti /notifiche /ape /ai/config all 200",
+      "GET /documenti/in-scadenza?giorni=90 returns 200 list"
+    ],
+    "frontend_p1": [
+      "/verbali: page+new btn+filter visible, filter consegna/riconsegna selectable",
+      "/verbali/nuovo: navigates correctly, form renders (body 5.5KB, NOT skeleton-only - resolves iter3 issue)",
+      "/documenti: page+upload btn visible, filter 'In scadenza (90gg)' triggers GET /documenti/in-scadenza?giorni=90, upload dialog with file input opens",
+      "/manutenzione: page+new btn+stato filter visible, 'Nuovo intervento' dialog opens with select-immobile + input-titolo + cascading select unita",
+      "Sidebar navigation: Verbali/Documenti/Manutenzione/APE/Assistente AI all present"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_p1_features.py",
+    "/app/test_reports/pytest/iteration_4_results.xml"
+  ],
+  "action_items": [
+    "Investigate Select.Item empty-string value error in DocumentiPage and/or ManutenzionePage (likely contratto_id/soggetto_id/unita_id Select with form.x=''). Causes red dev overlay even though pages function.",
+    "Add 'ape' branch in synchronous fallback inside routers/notifiche.py POST /trigger-check (currently only celery .delay path supports ape).",
+    "Production: ensure Redis/Celery worker+beat are actually running so check-ape-scadenza-daily fires (currently Redis unreachable in preview env, only logged warnings).",
+    "Iteration 3 verbale form skeleton issue is RESOLVED in this iteration (form renders properly)."
+  ],
+  "critical_code_review_comments": [
+    "BUG (FIXED by testing agent): models/notifica.py TipoNotifica enum was not extended when tasks/notifications.py started emitting tipo='ape_scadenza' / 'ape_scaduto'. This caused FastAPI ResponseValidationError 500 on GET /notifiche, breaking the NotifichePage entirely.",
+    "routers/notifiche.py POST /trigger-check sync fallback (lines 195-213) is missing the 'ape' case in the except branch. If Redis fails to enqueue, ape check is silently skipped.",
+    "tasks/notifications.py check_ape_scadenza marks ALL APEs with data_scadenza<today as stato='scaduto' on every run - including ones already marked. Idempotent for stato but still issues db.update_one each run; minor performance.",
+    "DocumentiPage handleAi uses native alert() to show AI result - poor UX for long structured output, prefer dialog with formatted markdown.",
+    "ManutenzionePage form Select for unita_id with disabled state uses placeholder '—' but the Select keeps form.unita_id='' between immobile changes; coupled with missing SelectItem 'all' option, this triggers the empty-string warning."
+  ],
+  "updated_files": [
+    "/app/backend/models/notifica.py (added APE_SCADENZA and APE_SCADUTO enum values)",
+    "/app/backend/tests/test_p1_features.py (new pytest suite, 17 tests, 1 skipped if no verbali)"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 passed, 1 skipped)",
+    "frontend": "~95% (3 new pages fully functional; only Select empty-string dev overlay remaining)"
+  },
+  "test_credentials": {
+    "email": "admin@estatewise.it",
+    "password": "admin123",
+    "role": "supervisore"
+  },
+  "seed_data_creation": "Test creates and deletes a TEST_ APE with past data_scadenza to verify check_ape_scadenza marks it scaduto and creates notification. Cleanup via DELETE /ape/{id}.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend test file at /app/backend/tests/test_p1_features.py covers reports PDF + APE celery + trigger-check + regressions. trigger_check_all is slow (~30s) due to Redis retries - exclude with -k 'not trigger_check_all' or increase timeout. Notifica enum extended for ape - if next iter adds new tipo values to tasks/notifications.py, must also update models/notifica.py. Provider AI still openai+gpt-5.2.",
+  "rca of the issue": "TipoNotifica Pydantic enum was hardcoded to 5 values. New check_ape_scadenza task introduced 2 new tipo strings ('ape_scadenza', 'ape_scaduto') but enum was not updated. After even a single ape_scaduto notification was inserted into MongoDB by the task, the GET /notifiche endpoint failed validating the response model, returning 500. Reproduction: trigger check_ape_scadenza when an expired APE exists, then GET /api/v1/notifiche -> 500. Mitigation: add APE_SCADENZA, APE_SCADUTO to TipoNotifica enum (done)."
+}

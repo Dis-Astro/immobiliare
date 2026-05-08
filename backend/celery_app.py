@@ -56,6 +56,11 @@ celery_app.conf.beat_schedule = {
         'task': 'tasks.notifications.check_documenti_scadenza',
         'schedule': crontab(hour=8, minute=30),
     },
+    # Controlla APE in scadenza ogni giorno alle 8:45
+    'check-ape-scadenza-daily': {
+        'task': 'tasks.notifications.check_ape_scadenza',
+        'schedule': crontab(hour=8, minute=45),
+    },
     # Controlla eventi critici ogni ora
     'check-eventi-critici-hourly': {
         'task': 'tasks.notifications.check_eventi_critici',
