@@ -196,6 +196,7 @@ async def trigger_notification_check(
             check_rate_ritardo,
             check_scadenze_contratti,
             check_documenti_scadenza,
+            check_ape_scadenza,
             check_eventi_critici
         )
         
@@ -206,6 +207,8 @@ async def trigger_notification_check(
             results.append(check_scadenze_contratti())
         if check_type in ["documenti", "all"]:
             results.append(check_documenti_scadenza())
+        if check_type in ["ape", "all"]:
+            results.append(check_ape_scadenza())
         if check_type in ["eventi", "all"]:
             results.append(check_eventi_critici())
         

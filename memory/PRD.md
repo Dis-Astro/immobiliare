@@ -37,9 +37,17 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 - **Integrazione AI**: 9 endpoint REST, switch Ollama/OpenAI/Anthropic/Gemini in DB (collection `config` key=`ai_config`), chat conversazionale con sessioni e cronologia, contesto app (immobili/contratti/rate/APE), generazione testo (email sollecito, clausola, disdetta, report), suggerimenti proattivi, analisi documento PDF (estrazione testo via pypdf + LLM), test connessione
 - **Frontend nuove pagine**: ApePage (CRUD+filtri+dialog rimando/sostituzione/storico+analisi AI), AiAssistantPage (sidebar sessioni+chat+genera testo), ImpostazioniPage (tab AI con provider+modello+temperature+test connessione)
 - **Routing**: ImmobileDetailPage e VerbaleFormPage collegati alle route, /ape, /ai, /impostazioni, /verbali/nuovo/:contrattoId
-- **WeasyPrint OS deps** aggiunte a backend Dockerfile (libpangoft2, libcairo2, libgdk-pixbuf, ecc.)
-- **Test backend**: 23/23 (100%) — APE create/update/upload/scadenza/file/delete/stats + AI config/chat/test/generate/suggest/analyze/sessions
-- **Test frontend**: ~90% — APE/AI/Impostazioni renderizzano correttamente, fix skeleton infinito su /verbali/nuovo
+
+### 2026-05 — P1 Reports + Notifiche + Pagine secondarie (Completato)
+- **WeasyPrint reale**: rimosso fallback try/except in `routers/reports.py`, librerie OS già nel Dockerfile, PDF reports ora generati realmente (contratti, verbali, rate, dashboard)
+- **Task Celery APE**: `check_ape_scadenza` con escalation 90/30/7gg + notifica APE scaduti idempotente (max 1 anno post-scadenza), schedulato giornalmente alle 8:45, marca automaticamente stato `scaduto`. Nuovi tipi `ape_scadenza` e `ape_scaduto` aggiunti a `TipoNotifica` enum
+- **Pagine UI nuove**: 
+  - **VerbaliListPage** (lista verbali con filtro consegna/riconsegna + download PDF)
+  - **DocumentiPage** (lista + upload con tipo/scadenza + filtro in scadenza + analisi AI con dialog risultato)
+  - **ManutenzionePage** (lista interventi + crea con cascading immobile→unità + cambio stato)
+- **Fix bug** SoggettiPage: rimosso `<SelectItem value="">` (non ammesso da Radix Select)
+- **UX miglioramento**: sostituiti `alert()` con Dialog componente per visualizzare risultati AI in DocumentiPage e ApePage
+- **Test**: backend P1 100% (reports + Celery APE + sync fallback), frontend ~95% (3 pagine + regressione)
 
 ## Architettura
 
@@ -105,21 +113,14 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 
 ## Roadmap (Backlog)
 
-### P1
-- Implementare logica reale generazione PDF con WeasyPrint (rimuovere fallback in `routers/reports.py` ora che le librerie OS sono nel Dockerfile)
-- Lista Verbali (pagina /verbali è ancora placeholder)
-- Pagina Documenti (/documenti placeholder)
-- Pagina Manutenzione/Interventi (/manutenzione placeholder)
-- Notifica scadenza APE in `tasks/notifications.py` (job esiste per documenti, estendere ad APE)
-- Selettore contratto in VerbaleFormPage quando contrattoId non passato
-- Notifica APE scaduto via Celery Beat
-
 ### P2
-- Pagine: Report, Audit log viewer, Profilo, Cambio password
+- Pagine: Report (export Excel/CSV con UI), Audit log viewer, Profilo utente, Cambio password
 - Dettaglio Contratto/Soggetto (route attive ma PlaceholderPage)
+- Selettore contratto in VerbaleFormPage quando contrattoId non passato (oggi richiede navigazione da contratto detail)
+- Notifica AI proattiva via email (es. brief mattutino con rate scadute, APE in scadenza, suggerimenti azioni)
 - Cron import/export multi-formato
 - Multi-tenancy (azienda)
-- Mobile-first verbali (PWA + camera)
+- Mobile-first verbali (PWA + camera per foto in checklist)
 - Integrazione bancaria per riconciliazione rate
 - AI Vision per leggere foto verbali e classificare automaticamente lo stato degli ambienti
 

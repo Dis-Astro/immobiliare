@@ -71,6 +71,8 @@ export default function ApePage() {
   const [replaceOpen, setReplaceOpen] = useState(false);
   const [storicoOpen, setStoricoOpen] = useState(false);
   const [analyzeLoading, setAnalyzeLoading] = useState(null);
+  const [aiResultOpen, setAiResultOpen] = useState(false);
+  const [aiResult, setAiResult] = useState({ title: '', content: '' });
 
   const [form, setForm] = useState({
     unita_id: '',
@@ -225,9 +227,9 @@ export default function ApePage() {
         ape_id: ape.id,
         prompt: 'Analizza questo APE ed estrai: classe energetica dichiarata, EPgl,nren, certificatore, validità. Rileva eventuali incongruenze con i dati registrati: classe=' + ape.classe_energetica + ', scadenza=' + ape.data_scadenza
       });
-      toast.success('Analisi completata', { description: res.data.content?.substring(0, 100) + '...', duration: 8000 });
-      console.log('AI Analysis:', res.data.content);
-      alert('Analisi AI:\n\n' + res.data.content);
+      toast.success('Analisi completata', { duration: 4000 });
+      setAiResult({ title: `Analisi APE classe ${ape.classe_energetica}`, content: res.data.content });
+      setAiResultOpen(true);
     } catch (err) {
       toast.error('Errore AI: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -505,6 +507,24 @@ export default function ApePage() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog risultato AI */}
+      <Dialog open={aiResultOpen} onOpenChange={setAiResultOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" data-testid="dialog-ape-ai-result">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-500" />
+              {aiResult.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <pre className="whitespace-pre-wrap text-sm bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">{aiResult.content}</pre>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(aiResult.content); toast.success('Copiato'); }}>Copia</Button>
+            <Button onClick={() => setAiResultOpen(false)}>Chiudi</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

@@ -113,12 +113,12 @@ export default function SoggettiPage() {
                 className="pl-9"
               />
             </div>
-            <Select value={tipo} onValueChange={setTipo}>
+            <Select value={tipo || 'all'} onValueChange={(v) => setTipo(v === 'all' ? '' : v)}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Tutti i tipi" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Tutti i tipi</SelectItem>
+                <SelectItem value="all">Tutti i tipi</SelectItem>
                 <SelectItem value="persona">Persona Fisica</SelectItem>
                 <SelectItem value="azienda">Azienda</SelectItem>
               </SelectContent>

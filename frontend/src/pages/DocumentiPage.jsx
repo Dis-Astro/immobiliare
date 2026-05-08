@@ -89,6 +89,9 @@ export default function DocumentiPage() {
     }
   };
 
+  const [aiResultOpen, setAiResultOpen] = useState(false);
+  const [aiResult, setAiResult] = useState({ title: '', content: '' });
+
   const handleAi = async (doc) => {
     setAiLoading(doc.id);
     try {
@@ -96,7 +99,8 @@ export default function DocumentiPage() {
         documento_id: doc.id,
         prompt: 'Analizza questo documento ed estrai i dati principali in formato strutturato (date, importi, parti coinvolte, scadenze). Segnala eventuali criticità.'
       });
-      alert('Analisi AI:\n\n' + res.data.content);
+      setAiResult({ title: `Analisi AI: ${doc.filename}`, content: res.data.content });
+      setAiResultOpen(true);
     } catch (err) {
       toast.error('Errore AI: ' + (err.response?.data?.detail || err.message));
     } finally {
@@ -184,6 +188,24 @@ export default function DocumentiPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={aiResultOpen} onOpenChange={setAiResultOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto" data-testid="dialog-ai-result">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="w-5 h-5 text-purple-500" />
+              {aiResult.title}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            <pre className="whitespace-pre-wrap text-sm bg-slate-50 dark:bg-slate-900 p-4 rounded-lg">{aiResult.content}</pre>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { navigator.clipboard.writeText(aiResult.content); toast.success('Copiato'); }}>Copia</Button>
+            <Button onClick={() => setAiResultOpen(false)}>Chiudi</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
         <DialogContent>
