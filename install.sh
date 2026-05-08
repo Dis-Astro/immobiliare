@@ -33,10 +33,12 @@ GITHUB_BRANCH="${GITHUB_BRANCH:-main}"         # Branch to checkout
 HOST_DATA_PATH="/srv/estatewise"
 HOST_MONGO_PATH="${HOST_DATA_PATH}/mongo"
 HOST_UPLOADS_PATH="${HOST_DATA_PATH}/uploads"
+HOST_OLLAMA_PATH="${HOST_DATA_PATH}/ollama"
 
 # Paths inside container
 CT_MONGO_PATH="/data/mongo"
 CT_UPLOADS_PATH="/data/uploads"
+CT_OLLAMA_PATH="/data/ollama"
 CT_APP_PATH="/opt/estatewise"
 
 # Template
@@ -166,11 +168,13 @@ create_storage() {
     
     mkdir -p "$HOST_MONGO_PATH"
     mkdir -p "$HOST_UPLOADS_PATH"
+    mkdir -p "$HOST_OLLAMA_PATH"
     chmod -R 777 "$HOST_DATA_PATH"
     
     log_ok "Created storage directories:"
     log_info "  MongoDB: $HOST_MONGO_PATH"
     log_info "  Uploads: $HOST_UPLOADS_PATH"
+    log_info "  Ollama:  $HOST_OLLAMA_PATH"
 }
 
 #===============================================================================
@@ -231,6 +235,7 @@ EOF
 # Persistent storage bind mounts
 mp0: ${HOST_MONGO_PATH},mp=${CT_MONGO_PATH}
 mp1: ${HOST_UPLOADS_PATH},mp=${CT_UPLOADS_PATH}
+mp2: ${HOST_OLLAMA_PATH},mp=${CT_OLLAMA_PATH}
 EOF
     
     log_ok "LXC configuration updated"
@@ -397,6 +402,8 @@ services:
       - DB_NAME=estatewise
       - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=*
+      - OLLAMA_URL=http://ollama:11434
+      - EMERGENT_LLM_KEY=\${EMERGENT_LLM_KEY:-}
       - SMTP_HOST=\${SMTP_HOST:-}
       - SMTP_PORT=\${SMTP_PORT:-587}
       - SMTP_USER=\${SMTP_USER:-}
@@ -475,6 +482,23 @@ services:
     networks:
       - estatewise-network
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: estatewise-ollama
+    restart: unless-stopped
+    volumes:
+      - ${CT_OLLAMA_PATH}:/root/.ollama
+    ports:
+      - \"11434:11434\"
+    networks:
+      - estatewise-network
+    healthcheck:
+      test: [\"CMD\", \"curl\", \"-f\", \"http://localhost:11434/api/tags\"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
 volumes:
   redis_data:
 
@@ -532,17 +556,26 @@ EXPOSE 80
 CMD [\"nginx\", \"-g\", \"daemon off;\"]
 DOCKERFILE_EOF"
 
-    # Create/update backend Dockerfile
+    # Create/update backend Dockerfile (con dipendenze WeasyPrint per PDF)
     ct_exec "cat > ${CT_APP_PATH}/backend/Dockerfile << 'DOCKERFILE_EOF'
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (incluse librerie WeasyPrint)
 RUN apt-get update && apt-get install -y \
     gcc \
     libffi-dev \
     curl \
+    libpangoft2-1.0-0 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
+    libharfbuzz0b \
+    shared-mime-info \
+    fonts-liberation \
+    fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
@@ -568,7 +601,7 @@ DOCKERFILE_EOF"
 
     # Ensure proper permissions
     ct_exec "chmod -R 755 ${CT_APP_PATH}"
-    ct_exec "chmod 777 ${CT_MONGO_PATH} ${CT_UPLOADS_PATH}"
+    ct_exec "chmod 777 ${CT_MONGO_PATH} ${CT_UPLOADS_PATH} ${CT_OLLAMA_PATH}"
     
     log_ok "Patches applied"
 }
@@ -588,6 +621,31 @@ deploy_stack() {
     ct_exec "cd ${CT_APP_PATH} && HOST_IP=${ct_ip} docker compose -f docker-compose.prod.yml up -d"
     
     log_ok "Docker stack deployed"
+}
+
+#===============================================================================
+# STEP 9b: PULL OLLAMA DEFAULT MODEL
+#===============================================================================
+pull_ollama_model() {
+    log_step "Pulling default Ollama model (llama3.2:3b - circa 2GB)"
+    log_info "Questa operazione può richiedere alcuni minuti..."
+    
+    # Wait for Ollama to be ready
+    local waited=0
+    while ! ct_exec "curl -sf http://localhost:11434/api/tags" &>/dev/null; do
+        sleep 3
+        ((waited+=3))
+        if [[ $waited -ge 60 ]]; then
+            log_warn "Ollama non risponde, salto download modello (potrai farlo manualmente con: pct exec ${CT_ID} -- docker exec estatewise-ollama ollama pull llama3.2:3b)"
+            return 0
+        fi
+    done
+    
+    if ct_exec "docker exec estatewise-ollama ollama pull llama3.2:3b"; then
+        log_ok "Modello Ollama scaricato"
+    else
+        log_warn "Download modello fallito - puoi riprovare manualmente più tardi"
+    fi
 }
 
 #===============================================================================
@@ -773,6 +831,7 @@ main() {
     apply_patches
     deploy_stack
     wait_for_services
+    pull_ollama_model
     
     # Run self-tests
     if run_self_tests; then

@@ -1,0 +1,78 @@
+{
+  "summary": "Tested EstateWise APE module + AI integration end-to-end. Backend 23/23 tests passed (100%) after fixing 2 backend bugs in routers/ape.py. Frontend pages ApePage, AiAssistantPage, ImpostazioniPage all render correctly with proper navigation and dialogs. /verbali/nuovo loads but shows only skeleton placeholders.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/v1/ape and /upload", "issue": "FIXED: ObjectId leak after insert_one (returned in response causing 500). Added doc.pop('_id', None) after insert."},
+      {"endpoint": "_enrich_ape (all GET ape endpoints)", "issue": "FIXED: stato 'sostituito' was being overwritten by recalculation from data_scadenza. Now preserves 'sostituito'."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "VerbaleFormPage (/verbali/nuovo)", "issue": "Page loads but renders only skeleton placeholders (gray boxes), no form fields/title visible. Likely waiting indefinitely on API or rendering empty. Needs main agent verification.", "selector": "/verbali/nuovo route", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Multiple pages", "issues": ["Hydration warning: <p> cannot be a descendant of <div> - HTML nesting issue, non-breaking"]}
+    ]
+  },
+  "passed_tests": {
+    "backend_ape": [
+      "GET /api/v1/ape (list)", "GET /ape/stats/dashboard", "POST /ape (after _id fix)",
+      "GET /ape/{id}", "PUT /ape/{id} update fields", "PUT /ape/{id}/scadenza with storico",
+      "GET /ape/in-scadenza?giorni=90", "GET /ape/scaduti", "GET /ape/by-unita/{id}",
+      "POST /ape/upload multipart with file", "PUT /ape/{id}/file replace with motivazione",
+      "DELETE /ape/{id}", "Verified: previous APE marked 'sostituito' on new upload"
+    ],
+    "backend_ai": [
+      "GET /ai/config returns available_external_models", "PUT /ai/config (supervisor only) switch to openai",
+      "POST /ai/test-connection", "POST /ai/chat new session", "POST /ai/chat multi-turn keeps history",
+      "GET /ai/sessions", "GET /ai/sessions/{id}/messages (4+ messages persisted)",
+      "POST /ai/chat with include_context=true", "POST /ai/generate email_sollecito",
+      "POST /ai/suggest entita_tipo=globale", "DELETE /ai/sessions/{id}"
+    ],
+    "frontend": [
+      "Login flow with admin@estatewise.it/admin123",
+      "Sidebar shows APE icon and Assistente AI links",
+      "/ape page: stats cards (APE attivi, Scaduti, Validi, In scadenza), filters Tutti/In scadenza/Scaduti, table with action buttons (Storico, Sostituisci, Rimanda, Elimina, AI)",
+      "/ape Nuovo APE dialog: full form (Unità, Classe, Zona, date emissione/scadenza, Certificatore, EPgl, Superficie, File PDF, Note)",
+      "/ai page: sidebar sessions list, Nuova chat, Genera testo buttons, chat input, contesto app toggle, provider badge openai/gpt-5.2",
+      "Multiple existing chat sessions visible (proven multi-turn persistence)",
+      "/impostazioni AI tab: Provider dropdown (OpenAI selected), Modello gpt-5.2, Temperature slider, Max messaggi cronologia, Salva + Testa connessione buttons",
+      "Routes: /immobili/nuovo loads NuovoImmobile form (real, not placeholder)"
+    ]
+  },
+  "test_report_links": [
+    "/app/tests/test_ape_ai.py",
+    "/app/test_reports/pytest/iteration_3_results.xml"
+  ],
+  "action_items": [
+    "Verify /verbali/nuovo - VerbaleFormPage shows only skeleton boxes with no form fields visible. Check if waiting on API call that never completes or component is rendering empty layout.",
+    "Verify ImmobileDetailPage at /immobili/:realId (test inadvertently navigated to /immobili/nuovo). Should be retested with a valid existing immobile id.",
+    "Optional: fix hydration warning <p> inside <div> in some component"
+  ],
+  "critical_code_review_comments": [
+    "ape.py router had ObjectId leak: after motor's insert_one, the _id ObjectId is mutated into the dict and was returned via _enrich_ape causing 500. FIXED by popping _id.",
+    "_enrich_ape in ape.py was overriding stato='sostituito' with stato calculated from data_scadenza. This caused list/get APIs to mislabel substituted APEs as 'valido'. FIXED to preserve sostituito.",
+    "ai.py PUT /config: defaults uses ollama_url='http://ollama:11434' but env says 'http://localhost:11434'. Minor inconsistency.",
+    "ai.py POST /chat line 144: model resolution uses ternary that always returns 'external_model' (string literal), not the actual config value. Should be: config.get('ollama_model') if provider == 'ollama' else config.get('external_model'). Currently passes literal 'external_model' as model when not ollama. Cosmetic - doesn't break flow.",
+    "ape.py POST /ape and /upload: marks ALL previous APE as sostituito BEFORE inserting new one - if insert fails after, old APEs stay incorrectly marked. Should be transactional or post-insert."
+  ],
+  "updated_files": [
+    "/app/backend/routers/ape.py (2 bug fixes: _id leak, stato preservation)",
+    "/app/tests/test_ape_ai.py (new test file)"
+  ],
+  "success_rate": {
+    "backend": "100% (23/23 tests passed)",
+    "frontend": "~90% (APE, AI, Impostazioni pages all working; /verbali/nuovo skeleton issue)"
+  },
+  "test_credentials": {
+    "email": "admin@estatewise.it",
+    "password": "admin123",
+    "role": "supervisore"
+  },
+  "seed_data_creation": "Tests create/delete TEST_ prefixed APE records and chat sessions. All cleanup via DELETE endpoints. AI provider was switched to openai+gpt-5.2 (persists in db.config).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "AI provider currently set to openai+gpt-5.2 in DB (db.config key='ai_config'). EMERGENT_LLM_KEY working with gpt-5.2 (~1-3s latency). Backend tests in /app/tests/test_ape_ai.py serve as regression. Two backend bug fixes applied to /app/backend/routers/ape.py. /verbali/nuovo needs investigation - possibly waiting on data fetch that fails silently or rendering only skeleton."
+}

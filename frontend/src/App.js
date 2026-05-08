@@ -17,6 +17,11 @@ import ContrattoWizardPage from './pages/ContrattoWizardPage';
 import SoggettiPage from './pages/SoggettiPage';
 import PagamentiPage from './pages/PagamentiPage';
 import NotifichePage from './pages/NotifichePage';
+import ImmobileDetailPage from './pages/ImmobileDetailPage';
+import VerbaleFormPage from './pages/VerbaleFormPage';
+import ApePage from './pages/ApePage';
+import AiAssistantPage from './pages/AiAssistantPage';
+import ImpostazioniPage from './pages/ImpostazioniPage';
 
 // Protected Route component
 function ProtectedRoute({ children }) {
@@ -116,7 +121,7 @@ function App() {
             path="/immobili/:id" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Dettaglio Immobile" />
+                <ImmobileDetailPage />
               </ProtectedRoute>
             } 
           />
@@ -210,6 +215,34 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/verbali/nuovo" 
+            element={
+              <ProtectedRoute>
+                <VerbaleFormPage />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* APE */}
+          <Route 
+            path="/ape" 
+            element={
+              <ProtectedRoute>
+                <ApePage />
+              </ProtectedRoute>
+            } 
+          />
+
+          {/* AI Assistant */}
+          <Route 
+            path="/ai" 
+            element={
+              <ProtectedRoute>
+                <AiAssistantPage />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Documenti */}
           <Route 
@@ -256,7 +289,7 @@ function App() {
             path="/impostazioni" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Impostazioni" />
+                <ImpostazioniPage />
               </ProtectedRoute>
             } 
           />

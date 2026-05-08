@@ -35,7 +35,9 @@ import {
   Wrench,
   ClipboardList,
   BarChart3,
-  Shield
+  Shield,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -49,7 +51,9 @@ const navItems = [
   { icon: AlertTriangle, label: 'Eventi Critici', path: '/eventi-critici', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: ClipboardList, label: 'Verbali', path: '/verbali', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: FileWarning, label: 'Documenti', path: '/documenti', roles: ['supervisore', 'gestore', 'lettura'] },
+  { icon: Zap, label: 'APE', path: '/ape', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: Wrench, label: 'Manutenzione', path: '/manutenzione', roles: ['supervisore', 'gestore', 'lettura'] },
+  { icon: Sparkles, label: 'Assistente AI', path: '/ai', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: BarChart3, label: 'Report', path: '/report', roles: ['supervisore', 'gestore'] },
   { icon: Shield, label: 'Audit Log', path: '/audit', roles: ['supervisore'] },
   { icon: Settings, label: 'Impostazioni', path: '/impostazioni', roles: ['supervisore'] },

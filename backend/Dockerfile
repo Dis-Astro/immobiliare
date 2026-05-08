@@ -3,11 +3,20 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (incluse librerie WeasyPrint per generazione PDF)
 RUN apt-get update && apt-get install -y \
     gcc \
     libffi-dev \
     curl \
+    libpangoft2-1.0-0 \
+    libpango-1.0-0 \
+    libpangocairo-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf-2.0-0 \
+    libharfbuzz0b \
+    shared-mime-info \
+    fonts-liberation \
+    fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
