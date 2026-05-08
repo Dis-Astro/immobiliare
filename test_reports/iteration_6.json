@@ -1,0 +1,70 @@
+{
+  "summary": "Iteration 6 testing complete on Brief AI mattutino feature. Backend: 15/15 pytest tests passed (GET/PUT config with persistence, partial update, EmailStr validation, preview HTML+text+stats, send-now with no recipients=400, send-now with SMTP not configured returns status='error' (no crash) + persists last_status/last_sent_at/last_error, Celery task importable+registered, regression on 7 existing endpoints all 200). Frontend: Tab 'Brief AI' renders BriefSettings; all data-testid present (toggle-brief-enabled, input-cron-hour/minute, input-new-recipient, btn-add-recipient, 4 toggle-include_*, btn-save-brief, btn-preview-brief, btn-send-now, brief-last-status). Email validation flow OK (invalid -> toast 'non valida', duplicate -> toast 'gia presente', valid -> badge appears). btn-send-now correctly disabled when recipients=[]. Anteprima opens dialog with HTML body (~2.4KB) + 4 stats badges. Salva shows toast 'Configurazione brief salvata'. Invia ora produces error toast and 'Ultimo invio' panel shows red Error icon with 'SMTP non configurato o invio fallito' as expected (dev SMTP not configured).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Brief Anteprima Dialog", "issues": ["A11y warning in console: 'Missing Description or aria-describedby for DialogContent' (same recurring issue from iteration_5; non-blocking, just add DialogDescription to /app/frontend/src/pages/ImpostazioniPage.jsx Dialog at line ~553)"]}
+    ]
+  },
+  "passed_tests": {
+    "backend": [
+      "GET /api/v1/brief/config -> 200 with default config (enabled=false, recipients=[], 4 include_* toggles=true, key stripped)",
+      "PUT /api/v1/brief/config full update -> 200, persists enabled/cron_hour/cron_minute/recipients/include_*",
+      "PUT /api/v1/brief/config partial update preserves other fields",
+      "PUT /api/v1/brief/config with invalid email -> 422 (EmailStr validation)",
+      "POST /api/v1/brief/preview -> 200, summary_html >100 chars with <!DOCTYPE, summary_text non-empty, stats dict has 4 int keys",
+      "POST /api/v1/brief/send-now with recipients=[] -> 400 'Nessun destinatario configurato'",
+      "POST /api/v1/brief/send-now with 1 recipient (SMTP not configured) -> 200, status='error', sent_count=0, errors[0] contains 'SMTP'; last_status/last_sent_at/last_error persisted to DB and visible on subsequent GET",
+      "tasks.brief.send_morning_brief importable, registered in celery_app.tasks, beat_schedule has 'send-morning-brief-hourly-check'",
+      "Regression 200: /auth/me, /immobili, /contratti, /soggetti, /ape, /audit, /reports/executive"
+    ],
+    "frontend": [
+      "/impostazioni shows 3 tabs (AI, Brief AI, Generale) with correct data-testid",
+      "Click tab-brief renders BriefSettings card with all 12 expected data-testid elements",
+      "btn-send-now disabled=true when recipients=[]",
+      "Add invalid email 'not-an-email' -> toast 'Email non valida' (no badge added)",
+      "Add valid email 'test_brief@example.com' -> badge visible in destinatari list",
+      "Add duplicate -> toast 'Email gia presente'",
+      "After adding recipient, btn-send-now becomes enabled",
+      "Click btn-preview-brief -> Dialog opens, brief-preview-content rendered with HTML length ~2394 chars + 4 stats badges (Rate/APE/Contratti/Interventi)",
+      "Click btn-save-brief -> toast 'Configurazione brief salvata'",
+      "Click btn-send-now -> error toast + brief-last-status panel appears with red XCircle icon, text: 'Ultimo invio: 08/05/2026, 15:32:37 - error' + 'test_brief@example.com: SMTP non configurato o invio fallito'"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_brief.py",
+    "/app/test_reports/pytest/iteration_6_results.xml"
+  ],
+  "action_items": [
+    "(Optional, low priority) Add <DialogDescription> inside the Brief preview Dialog (ImpostazioniPage.jsx ~line 555) and any other Dialog still missing it, to silence recurring a11y console warning 'Missing Description for DialogContent'."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/services/brief.py: aggregate_brief_data fires N+1 Mongo queries inside loops (find_one per rata for contratto, then per contratto for soggetto, then per APE for unita+immobile, etc.). With many records this will be slow. Consider batching with $in lookups or $lookup aggregation pipelines.",
+    "/app/backend/routers/brief.py update_config: filters out keys whose value is None which prevents clearing 'recipients' to []. Currently works because [] is not None, but the filter `{k: v for k, v in update_dict.items() if v is not None}` is fragile — a future caller passing recipients=None to clear would silently drop the field. Consider explicit handling.",
+    "/app/backend/tasks/brief.py: hardcoded fallback 'mongodb://localhost:27017' / 'test_database' violates env-only rule. Should fail fast if MONGO_URL/DB_NAME missing (per environment instructions: 'Omit default values so missing config fails fast').",
+    "/app/frontend/src/pages/ImpostazioniPage.jsx (BriefSettings): toast.warning is used but sonner needs the warning() method to be available (default present); confirm both sonner versions render this. Also no client-side dedupe beyond exact case match (e.g. ' Foo@x.com ' is trimmed but 'Foo@X.com' vs 'foo@x.com' would be allowed).",
+    "/app/backend/tasks/brief.py: scheduled task fires every hour at minute 5 regardless of cron_minute config — only cron_hour is checked. The per-user configurable cron_minute is therefore stored but ignored at scheduling time. Either document this limitation or honor cron_minute at the task level (e.g. by also checking now.minute within a tolerance).",
+    "/app/backend/utils/email.py: send_email() returns False (rather than raising) when SMTP not configured — current router translates this to 'SMTP non configurato o invio fallito'. The text conflates two different failure modes (config missing vs send exception). Distinguishing them in the error string would help debugging."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_brief.py (new pytest suite, 15 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (15/15 passed)",
+    "frontend": "100% (all flows work; 1 minor a11y console warning carried over from iteration_5)"
+  },
+  "test_credentials": {
+    "email": "admin@estatewise.it",
+    "password": "admin123"
+  },
+  "seed_data_creation": "No persistent test data. Brief config was modified during tests then restored at end (enabled=false, cron_hour=8, cron_minute=0, recipients=[], all include_*=true). Note: last_sent_at/last_status='error'/last_error remain set in DB from the send-now test — this is intentional to validate persistence and is also the correct behavior expected by the spec.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Brief AI feature fully validated end-to-end. Test file: /app/backend/tests/test_brief.py (reusable). Cleanup at end resets recipients=[]/enabled=false but cron_hour stayed at value set during tests; final cleanup via curl restored cron_hour=8, cron_minute=0. Note that scheduled cron_minute is currently NOT honored by the Celery beat schedule (fires only at minute :05 every hour and only checks cron_hour) — see code review comments.",
+  "rca of the issue": "No bugs found. The 'Invia ora returns error' is the expected behavior in dev environment without SMTP configured (SMTP_HOST/SMTP_USER empty in /app/backend/.env), and the system correctly: (1) returns HTTP 200 with body {status:'error', sent_count:0, errors:[...]} instead of crashing, (2) persists last_status='error' + last_sent_at + last_error in DB, (3) frontend reads this and renders the red 'Ultimo invio' panel with the error reason. End-to-end flow validated."
+}

@@ -20,7 +20,7 @@ celery_app = Celery(
     'estatewise',
     broker=REDIS_URL,
     backend=REDIS_URL,
-    include=['tasks.notifications', 'tasks.reports']
+    include=['tasks.notifications', 'tasks.reports', 'tasks.brief']
 )
 
 # Celery configuration
@@ -70,6 +70,13 @@ celery_app.conf.beat_schedule = {
     'retry-failed-notifications': {
         'task': 'tasks.notifications.retry_failed_notifications',
         'schedule': crontab(minute='*/30'),
+    },
+    # Brief mattutino AI: il task viene chiamato ogni ora al minuto 5,
+    # poi al suo interno verifica se l'ora corrente corrisponde a quella configurata
+    # in DB (config.brief_config.cron_hour) e se è abilitato.
+    'send-morning-brief-hourly-check': {
+        'task': 'tasks.brief.send_morning_brief',
+        'schedule': crontab(minute=5),
     },
 }
 

@@ -14,7 +14,11 @@ import {
   Tabs, TabsContent, TabsList, TabsTrigger
 } from '../components/ui/tabs';
 import {
-  Sparkles, Server, CheckCircle2, XCircle, Loader2, Cpu, Cloud
+  Dialog, DialogContent, DialogHeader, DialogTitle
+} from '../components/ui/dialog';
+import {
+  Sparkles, Server, CheckCircle2, XCircle, Loader2, Cpu, Cloud, Mail,
+  Plus, Trash2, Send, Eye, AlertCircle
 } from 'lucide-react';
 
 const OLLAMA_MODELS = [
@@ -104,6 +108,7 @@ export default function ImpostazioniPage() {
       <Tabs defaultValue="ai">
         <TabsList>
           <TabsTrigger value="ai" data-testid="tab-ai"><Sparkles className="w-4 h-4 mr-2" /> AI</TabsTrigger>
+          <TabsTrigger value="brief" data-testid="tab-brief"><Mail className="w-4 h-4 mr-2" /> Brief AI</TabsTrigger>
           <TabsTrigger value="general" data-testid="tab-general">Generale</TabsTrigger>
         </TabsList>
 
@@ -267,6 +272,10 @@ export default function ImpostazioniPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="brief" className="space-y-4">
+          <BriefSettings isSupervisore={isSupervisore} />
+        </TabsContent>
+
         <TabsContent value="general">
           <Card>
             <CardHeader>
@@ -279,5 +288,287 @@ export default function ImpostazioniPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+
+function BriefSettings({ isSupervisore }) {
+  const [config, setConfig] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
+  const [previewHtml, setPreviewHtml] = useState(null);
+  const [previewStats, setPreviewStats] = useState(null);
+  const [newRecipient, setNewRecipient] = useState('');
+
+  const fetchConfig = async () => {
+    try {
+      const res = await api.get('/brief/config');
+      setConfig(res.data);
+    } catch (err) {
+      toast.error('Errore caricamento config brief');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchConfig(); }, []);
+
+  const handleSave = async () => {
+    if (!isSupervisore) return;
+    setSaving(true);
+    try {
+      const res = await api.put('/brief/config', {
+        enabled: config.enabled,
+        cron_hour: config.cron_hour,
+        cron_minute: config.cron_minute,
+        recipients: config.recipients,
+        include_rate: config.include_rate,
+        include_ape: config.include_ape,
+        include_contratti: config.include_contratti,
+        include_interventi: config.include_interventi,
+      });
+      setConfig(res.data);
+      toast.success('Configurazione brief salvata');
+    } catch (err) {
+      toast.error('Errore: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const addRecipient = () => {
+    const email = newRecipient.trim();
+    if (!email) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      toast.error('Email non valida');
+      return;
+    }
+    if (config.recipients.includes(email)) {
+      toast.error('Email già presente');
+      return;
+    }
+    setConfig({ ...config, recipients: [...config.recipients, email] });
+    setNewRecipient('');
+  };
+
+  const removeRecipient = (email) => {
+    setConfig({ ...config, recipients: config.recipients.filter(r => r !== email) });
+  };
+
+  const handlePreview = async () => {
+    setPreviewing(true);
+    try {
+      const res = await api.post('/brief/preview');
+      setPreviewHtml(res.data.summary_html);
+      setPreviewStats(res.data.stats);
+    } catch (err) {
+      toast.error('Errore anteprima: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setPreviewing(false);
+    }
+  };
+
+  const handleSendNow = async () => {
+    if (!isSupervisore) return;
+    setSending(true);
+    try {
+      const res = await api.post('/brief/send-now');
+      if (res.data.status === 'success') {
+        toast.success(`Brief inviato a ${res.data.sent_count}/${res.data.total_recipients} destinatari`);
+      } else if (res.data.status === 'partial') {
+        toast.warning(`Inviato parzialmente: ${res.data.sent_count}/${res.data.total_recipients}`);
+      } else {
+        toast.error('Invio fallito: ' + (res.data.errors?.[0] || 'errore sconosciuto'));
+      }
+      fetchConfig();
+    } catch (err) {
+      toast.error('Errore: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) return <div className="p-8 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto" /></div>;
+  if (!config) return <p className="text-red-500">Errore caricamento</p>;
+
+  return (
+    <Card data-testid="brief-settings">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="w-5 h-5 text-blue-500" />
+          Brief mattutino AI via email
+        </CardTitle>
+        <CardDescription>
+          Sintesi quotidiana automatica via email con sintesi AI di rate, APE, contratti e interventi.
+          Richiede SMTP configurato (variabili <code>SMTP_*</code> nel <code>.env</code> backend).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-3">
+          <Label htmlFor="brief-enabled" className="text-base">Brief abilitato</Label>
+          <input
+            id="brief-enabled"
+            type="checkbox"
+            checked={config.enabled}
+            onChange={e => setConfig({ ...config, enabled: e.target.checked })}
+            disabled={!isSupervisore}
+            className="w-5 h-5"
+            data-testid="toggle-brief-enabled"
+          />
+          <Badge variant={config.enabled ? 'default' : 'secondary'}>
+            {config.enabled ? 'Attivo' : 'Disattivato'}
+          </Badge>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label>Ora invio</Label>
+            <Input
+              type="number" min="0" max="23"
+              value={config.cron_hour}
+              onChange={e => setConfig({ ...config, cron_hour: parseInt(e.target.value) || 0 })}
+              disabled={!isSupervisore}
+              data-testid="input-cron-hour"
+            />
+          </div>
+          <div>
+            <Label>Minuti</Label>
+            <Input
+              type="number" min="0" max="59"
+              value={config.cron_minute}
+              onChange={e => setConfig({ ...config, cron_minute: parseInt(e.target.value) || 0 })}
+              disabled={!isSupervisore}
+              data-testid="input-cron-minute"
+            />
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 -mt-2">
+          Fuso orario: Europe/Rome. Es. 8:00 = 08:00 italiana.
+        </p>
+
+        <div>
+          <Label>Destinatari email</Label>
+          <div className="flex gap-2 mt-1">
+            <Input
+              type="email"
+              placeholder="nome@azienda.it"
+              value={newRecipient}
+              onChange={e => setNewRecipient(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addRecipient())}
+              disabled={!isSupervisore}
+              data-testid="input-new-recipient"
+            />
+            <Button onClick={addRecipient} disabled={!isSupervisore || !newRecipient.trim()} variant="outline" data-testid="btn-add-recipient">
+              <Plus className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2 mt-3">
+            {config.recipients.length === 0 && (
+              <p className="text-sm text-slate-400">Nessun destinatario configurato</p>
+            )}
+            {config.recipients.map(email => (
+              <Badge key={email} variant="secondary" className="pl-2 pr-1 py-1 gap-1">
+                {email}
+                {isSupervisore && (
+                  <button
+                    onClick={() => removeRecipient(email)}
+                    className="hover:text-red-500 ml-1"
+                    data-testid={`btn-remove-${email}`}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                )}
+              </Badge>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Sezioni da includere</Label>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            {[
+              { key: 'include_rate', label: 'Rate in ritardo' },
+              { key: 'include_ape', label: 'APE in scadenza (90gg)' },
+              { key: 'include_contratti', label: 'Contratti in scadenza (30gg)' },
+              { key: 'include_interventi', label: 'Interventi aperti' },
+            ].map(s => (
+              <label key={s.key} className="flex items-center gap-2 text-sm cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={config[s.key]}
+                  onChange={e => setConfig({ ...config, [s.key]: e.target.checked })}
+                  disabled={!isSupervisore}
+                  data-testid={`toggle-${s.key}`}
+                />
+                {s.label}
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap gap-2 pt-2 border-t">
+          <Button onClick={handleSave} disabled={saving || !isSupervisore} data-testid="btn-save-brief">
+            {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+            Salva
+          </Button>
+          <Button variant="outline" onClick={handlePreview} disabled={previewing} data-testid="btn-preview-brief">
+            {previewing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Eye className="w-4 h-4 mr-2" />}
+            Anteprima
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleSendNow}
+            disabled={sending || !isSupervisore || config.recipients.length === 0}
+            data-testid="btn-send-now"
+          >
+            {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Send className="w-4 h-4 mr-2" />}
+            Invia ora
+          </Button>
+        </div>
+
+        {config.last_sent_at && (
+          <div className="text-xs text-slate-500 pt-2 border-t flex items-start gap-2" data-testid="brief-last-status">
+            {config.last_status === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5" />
+            ) : config.last_status === 'error' ? (
+              <XCircle className="w-4 h-4 text-red-600 mt-0.5" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5" />
+            )}
+            <div>
+              Ultimo invio: {new Date(config.last_sent_at).toLocaleString('it-IT')} — <strong className="capitalize">{config.last_status}</strong>
+              {config.last_error && <div className="text-red-500 mt-1">{config.last_error}</div>}
+            </div>
+          </div>
+        )}
+
+        {!isSupervisore && (
+          <p className="text-sm text-amber-600 italic">Solo i supervisori possono modificare la configurazione del brief.</p>
+        )}
+      </CardContent>
+
+      <Dialog open={!!previewHtml} onOpenChange={(o) => !o && setPreviewHtml(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Anteprima Brief Mattutino</DialogTitle>
+          </DialogHeader>
+          {previewStats && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+              <Badge variant="secondary" className="justify-center">Rate: {previewStats.rate_in_ritardo}</Badge>
+              <Badge variant="secondary" className="justify-center">APE: {previewStats.ape_in_scadenza}</Badge>
+              <Badge variant="secondary" className="justify-center">Contratti: {previewStats.contratti_in_scadenza}</Badge>
+              <Badge variant="secondary" className="justify-center">Interventi: {previewStats.interventi_aperti}</Badge>
+            </div>
+          )}
+          <div
+            className="border rounded p-3 bg-white"
+            data-testid="brief-preview-content"
+            dangerouslySetInnerHTML={{ __html: previewHtml || '' }}
+          />
+        </DialogContent>
+      </Dialog>
+    </Card>
   );
 }

@@ -166,6 +166,7 @@ from routers.dashboard import router as dashboard_router
 from routers.audit import router as audit_router
 from routers.ape import router as ape_router
 from routers.ai import router as ai_router
+from routers.brief import router as brief_router
 
 api_router.include_router(auth_router)
 api_router.include_router(users_router)
@@ -187,6 +188,7 @@ api_router.include_router(dashboard_router)
 api_router.include_router(audit_router)
 api_router.include_router(ape_router)
 api_router.include_router(ai_router)
+api_router.include_router(brief_router)
 
 
 # Health check endpoint
