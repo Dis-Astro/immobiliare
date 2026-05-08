@@ -10,7 +10,7 @@ import pytest
 import requests
 from datetime import date, timedelta
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://estatewise-lxc-setup.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://energy-audit-demo-1.preview.emergentagent.com").rstrip("/")
 API = f"{BASE_URL}/api/v1"
 
 # ---------- fixtures ----------
