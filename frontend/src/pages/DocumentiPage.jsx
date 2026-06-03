@@ -163,11 +163,11 @@ export default function DocumentiPage() {
                       {d.contratto_codice && <div className="text-xs">{d.contratto_codice}</div>}
                       {!d.immobile_titolo && !d.contratto_codice && '-'}
                     </TableCell>
-                    <TableCell className="text-sm">{d.created_at?.substring(0,10)}</TableCell>
+                    <TableCell className="text-sm">{d.uploaded_at?.substring(0,10)}</TableCell>
                     <TableCell>
-                      {d.data_scadenza ? (
-                        <Badge variant={new Date(d.data_scadenza) < new Date() ? 'destructive' : 'outline'}>
-                          {d.data_scadenza}
+                      {d.expiry_date ? (
+                        <Badge variant={new Date(d.expiry_date) < new Date() ? 'destructive' : 'outline'}>
+                          {d.expiry_date}
                         </Badge>
                       ) : <span className="text-slate-400 text-sm">-</span>}
                     </TableCell>

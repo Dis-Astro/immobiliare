@@ -105,12 +105,10 @@ export default function ContrattoWizardPage() {
       setLoading(true);
       try {
         const [unitaRes, soggettiRes] = await Promise.all([
-          api.get('/unita?limit=100'),
+          api.get(`/unita?limit=100&disponibile_al=${formData.data_inizio}`),
           api.get('/soggetti?limit=100'),
         ]);
-        // Filter only available units
-        const availableUnita = unitaRes.data.filter(u => u.stato !== 'locata');
-        setUnita(availableUnita);
+        setUnita(unitaRes.data);
         setSoggetti(soggettiRes.data);
       } catch (error) {
         toast.error('Errore nel caricamento dei dati');
@@ -119,7 +117,7 @@ export default function ContrattoWizardPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [formData.data_inizio]);
 
   // Fetch affittuario rating when selected
   useEffect(() => {
@@ -235,6 +233,19 @@ export default function ContrattoWizardPage() {
       case 0: // Unità
         return (
           <div className="space-y-4">
+            <div className="max-w-xs space-y-2">
+              <Label>Data inizio contratto *</Label>
+              <Input
+                type="date"
+                value={formData.data_inizio}
+                onChange={(e) => {
+                  updateFormData('data_inizio', e.target.value);
+                  updateFormData('unita_id', '');
+                  setSelectedUnita(null);
+                }}
+                data-testid="input-data-inizio-step-unita"
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {unita.map(u => (
                 <Card 
@@ -252,6 +263,9 @@ export default function ContrattoWizardPage() {
                         <p className="font-semibold">{u.codice_unita}</p>
                         <p className="text-sm text-slate-500">{u.tipo_immobile?.replace('_', ' ')}</p>
                         <p className="text-sm text-slate-500">{u.mq} mq</p>
+                        {u.stato === 'prenotata' && (
+                          <Badge variant="outline" className="mt-2">Contratto futuro</Badge>
+                        )}
                       </div>
                       {formData.unita_id === u.id && (
                         <Check className="w-5 h-5 text-primary" />

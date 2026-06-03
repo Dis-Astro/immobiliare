@@ -117,14 +117,6 @@ export default function LoginPage() {
               </Button>
             </form>
 
-            <div className="mt-6 p-4 bg-slate-100 dark:bg-slate-800 rounded-lg">
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium mb-2">
-                CREDENZIALI DEMO
-              </p>
-              <p className="text-sm text-slate-700 dark:text-slate-300 font-mono">
-                admin@estatewise.it / admin123
-              </p>
-            </div>
           </CardContent>
         </Card>
 

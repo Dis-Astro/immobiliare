@@ -25,7 +25,7 @@ CT_IP="${CT_IP:-dhcp}"                         # IP address (dhcp or static like
 CT_GATEWAY="${CT_GATEWAY:-}"                   # Gateway (required if static IP)
 
 # GitHub repository
-GITHUB_REPO="https://github.com/Dis-Astro/immobiliare.git"
+GITHUB_REPO="${GITHUB_REPO:-https://github.com/Dis-Astro/immobiliare.git}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-}"               # Optional: GitHub token for private repos
 GITHUB_BRANCH="${GITHUB_BRANCH:-main}"         # Branch to checkout
 
@@ -336,7 +336,7 @@ clone_repository() {
     # Build clone URL with token if provided
     local clone_url="$GITHUB_REPO"
     if [[ -n "$GITHUB_TOKEN" ]]; then
-        clone_url="https://${GITHUB_TOKEN}@github.com/Dis-Astro/immobiliare.git"
+        clone_url="$(echo "$GITHUB_REPO" | sed "s#https://#https://${GITHUB_TOKEN}@#")"
     fi
     
     # Clone repository
@@ -351,9 +351,17 @@ clone_repository() {
 #===============================================================================
 apply_patches() {
     log_step "Applying patches and configuration"
-    
-    # Create yarn.lock if missing
-    ct_exec "touch ${CT_APP_PATH}/frontend/yarn.lock"
+
+    ct_exec "cd ${CT_APP_PATH} && cat > .env << ENV_EOF
+JWT_SECRET_KEY=\$(date +%s%N | sha256sum | awk '{print \$1}')
+EMERGENT_LLM_KEY=\${EMERGENT_LLM_KEY:-}
+SMTP_HOST=\${SMTP_HOST:-}
+SMTP_PORT=\${SMTP_PORT:-587}
+SMTP_USER=\${SMTP_USER:-}
+SMTP_PASSWORD=\${SMTP_PASSWORD:-}
+SMTP_FROM=\${SMTP_FROM:-noreply@estatewise.local}
+HOST_IP=
+ENV_EOF"
     
     # Create production docker-compose.yml with bind mounts
     ct_exec "cat > ${CT_APP_PATH}/docker-compose.prod.yml << 'COMPOSE_EOF'
@@ -402,6 +410,7 @@ services:
       - DB_NAME=estatewise
       - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=*
+      - JWT_SECRET_KEY=\${JWT_SECRET_KEY}
       - OLLAMA_URL=http://ollama:11434
       - EMERGENT_LLM_KEY=\${EMERGENT_LLM_KEY:-}
       - SMTP_HOST=\${SMTP_HOST:-}
@@ -514,11 +523,10 @@ FROM node:18-alpine as builder
 WORKDIR /app
 
 # Copy package files
-COPY package.json ./
-RUN touch yarn.lock
+COPY package.json package-lock.json* ./
 
 # Install dependencies
-RUN yarn install --network-timeout 300000
+RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
 # Copy source code
 COPY . .
@@ -528,7 +536,7 @@ ARG REACT_APP_BACKEND_URL
 ENV REACT_APP_BACKEND_URL=\${REACT_APP_BACKEND_URL}
 
 # Build the application
-RUN yarn build
+RUN npm run build
 
 # Production stage
 FROM nginx:alpine

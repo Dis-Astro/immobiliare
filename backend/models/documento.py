@@ -6,6 +6,7 @@ import uuid
 
 
 class LivelloDocumento(str, Enum):
+    GENERICO = "generico"
     IMMOBILE = "immobile"
     UNITA = "unita"
     CONTRATTO = "contratto"

@@ -50,6 +50,7 @@ class Rata(RataBase):
     riferimento: Optional[str] = None
     note: Optional[str] = None
     allegato_contabile_ref: Optional[str] = None
+    importo_parziale: Optional[float] = None
     giorni_ritardo: int = 0
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     # Campi join per UI

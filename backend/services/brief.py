@@ -72,9 +72,9 @@ async def aggregate_brief_data(db: AsyncIOMotorDatabase, config: Dict[str, Any])
 
     if config.get("include_ape", True):
         ape = await db.ape.find(
-            {"scadenza": {"$lte": target_90, "$gte": today.isoformat()}, "stato": {"$ne": "sostituito"}},
+            {"data_scadenza": {"$lte": target_90, "$gte": today.isoformat()}, "stato": {"$ne": "sostituito"}},
             {"_id": 0}
-        ).sort("scadenza", 1).limit(50).to_list(50)
+        ).sort("data_scadenza", 1).limit(50).to_list(50)
         for a in ape:
             unita = await db.unita.find_one(
                 {"id": a.get("unita_id")},
@@ -139,7 +139,7 @@ def _build_data_summary_text(data: Dict[str, Any]) -> str:
     for a in ape[:20]:
         parts.append(
             f"- {a.get('immobile', '—')} / {a.get('unita_codice', '—')} | "
-            f"classe {a.get('classe_energetica', '?')} | scadenza {a.get('scadenza', '—')}"
+            f"classe {a.get('classe_energetica', '?')} | scadenza {a.get('data_scadenza', '—')}"
         )
 
     contratti = data.get("contratti_in_scadenza", [])
@@ -232,7 +232,7 @@ def render_brief_html(data: Dict[str, Any], ai_summary: str) -> str:
         data.get("ape_in_scadenza", []),
         lambda a: f"<tr><td style='padding:6px 8px;border-bottom:1px solid #f1f5f9;'>{a.get('immobile', '—')} / {a.get('unita_codice', '—')}</td>"
                   f"<td style='padding:6px 8px;border-bottom:1px solid #f1f5f9;'>Classe {a.get('classe_energetica', '?')}</td>"
-                  f"<td style='padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:right;'>{a.get('scadenza', '—')}</td></tr>"
+                  f"<td style='padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:right;'>{a.get('data_scadenza', '—')}</td></tr>"
     )
 
     contratti_html = section(

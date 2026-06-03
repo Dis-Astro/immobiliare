@@ -183,7 +183,7 @@ def test_celery_task_registered():
     from tasks.brief import send_morning_brief  # noqa: F401
     from celery_app import celery_app
     assert "tasks.brief.send_morning_brief" in celery_app.tasks
-    assert "send-morning-brief-hourly-check" in celery_app.conf.beat_schedule
+    assert "send-morning-brief-check" in celery_app.conf.beat_schedule
 
 
 # ---- Regression: existing endpoints still work ----

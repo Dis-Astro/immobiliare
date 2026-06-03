@@ -32,6 +32,8 @@ import CambioPasswordPage from './pages/CambioPasswordPage';
 import ContrattoDetailPage from './pages/ContrattoDetailPage';
 import SoggettoDetailPage from './pages/SoggettoDetailPage';
 import SoggettoFormPage from './pages/SoggettoFormPage';
+import ModelliPage from './pages/ModelliPage';
+import IncassiPage from './pages/IncassiPage';
 
 // Protected Route component
 function ProtectedRoute({ children }) {
@@ -213,6 +215,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/incassi" 
+            element={
+              <ProtectedRoute>
+                <IncassiPage />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Eventi Critici */}
           <Route 
@@ -276,6 +286,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <DocumentiPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/modelli" 
+            element={
+              <ProtectedRoute>
+                <ModelliPage />
               </ProtectedRoute>
             } 
           />

@@ -1,11 +1,24 @@
 from fastapi import APIRouter, HTTPException, Depends, Query
 from typing import List, Optional
+from datetime import date
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from models.unita import Unita, UnitaCreate, UnitaUpdate, TipoImmobile, DestinazioneUso
 from models.user import UserInDB, UserRole
 from routers.auth import get_current_user, get_db
 from services.audit import log_audit
+
+
+def _parse_iso_date(value: Optional[str]) -> Optional[date]:
+    if not value:
+        return None
+    return date.fromisoformat(value[:10])
+
+
+def _overlaps_on(contratto: dict, target: date) -> bool:
+    start = _parse_iso_date(contratto.get("data_inizio"))
+    end = _parse_iso_date(contratto.get("data_scadenza"))
+    return bool(start and end and start <= target < end)
 
 router = APIRouter(prefix="/unita", tags=["Unità"])
 
@@ -17,6 +30,7 @@ async def list_unita(
     immobile_id: Optional[str] = None,
     tipo_immobile: Optional[TipoImmobile] = None,
     stato: Optional[str] = None,
+    disponibile_al: Optional[str] = None,
     search: Optional[str] = None,
     current_user: UserInDB = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db)
@@ -35,17 +49,24 @@ async def list_unita(
     
     unita_list = await db.unita.find(query, {"_id": 0}).skip(skip).limit(limit).to_list(limit)
     
+    target_date = _parse_iso_date(disponibile_al) or date.today()
+
     # Enrich with contract info and state
     for u in unita_list:
-        contratto = await db.contratti.find_one(
+        contratti_attivi = await db.contratti.find(
             {"unita_id": u["id"], "stato": "attivo"},
-            {"_id": 0, "id": 1, "affittuario_id": 1}
-        )
+            {"_id": 0, "id": 1, "affittuario_id": 1, "data_inizio": 1, "data_scadenza": 1}
+        ).sort("data_inizio", 1).to_list(100)
+        contratto = next((c for c in contratti_attivi if _overlaps_on(c, target_date)), None)
+        prossimo = next((c for c in contratti_attivi if (_parse_iso_date(c.get("data_inizio")) or target_date) > target_date), None)
         if contratto:
             u["contratto_attivo_id"] = contratto["id"]
             affittuario = await db.soggetti.find_one({"id": contratto["affittuario_id"]}, {"nome": 1})
             u["affittuario_nome"] = affittuario["nome"] if affittuario else None
             u["stato"] = "locata"
+        elif prossimo:
+            u["contratto_futuro_id"] = prossimo["id"]
+            u["stato"] = "prenotata"
         else:
             # Check if in maintenance
             intervento = await db.interventi.find_one(
@@ -53,6 +74,9 @@ async def list_unita(
                 {"_id": 0}
             )
             u["stato"] = "in_manutenzione" if intervento else "libera"
+
+    if disponibile_al:
+        unita_list = [u for u in unita_list if u.get("stato") in ("libera", "prenotata")]
     
     # Filter by stato if requested
     if stato:

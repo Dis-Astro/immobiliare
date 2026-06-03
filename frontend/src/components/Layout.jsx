@@ -38,6 +38,9 @@ import {
   Shield,
   Sparkles,
   Zap
+  ,
+  FilePlus2,
+  ReceiptText
 } from 'lucide-react';
 import { cn } from '../lib/utils';
 
@@ -48,9 +51,11 @@ const navItems = [
   { icon: FileText, label: 'Contratti', path: '/contratti', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: Users, label: 'Soggetti', path: '/soggetti', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: CreditCard, label: 'Pagamenti', path: '/pagamenti', roles: ['supervisore', 'gestore', 'lettura'] },
+  { icon: ReceiptText, label: 'Incassi', path: '/incassi', roles: ['supervisore', 'gestore'] },
   { icon: AlertTriangle, label: 'Eventi Critici', path: '/eventi-critici', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: ClipboardList, label: 'Verbali', path: '/verbali', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: FileWarning, label: 'Documenti', path: '/documenti', roles: ['supervisore', 'gestore', 'lettura'] },
+  { icon: FilePlus2, label: 'Modelli', path: '/modelli', roles: ['supervisore', 'gestore'] },
   { icon: Zap, label: 'APE', path: '/ape', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: Wrench, label: 'Manutenzione', path: '/manutenzione', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: Sparkles, label: 'Assistente AI', path: '/ai', roles: ['supervisore', 'gestore', 'lettura'] },

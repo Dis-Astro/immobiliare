@@ -52,6 +52,16 @@ def generate_rate(contratto: Contratto) -> List[dict]:
     return rate
 
 
+def _parse_iso_date(value) -> date:
+    if isinstance(value, date):
+        return value
+    return date.fromisoformat(value[:10])
+
+
+def _date_ranges_overlap(start_a: date, end_a: date, start_b: date, end_b: date) -> bool:
+    return start_a < end_b and start_b < end_a
+
+
 @router.get("", response_model=List[Contratto])
 async def list_contratti(
     skip: int = Query(0, ge=0),
@@ -140,7 +150,7 @@ async def create_contratto(
     
     # Check no active contract on unit
     existing = await db.contratti.find_one({"unita_id": data.unita_id, "stato": "attivo"})
-    if existing:
+    if existing and False:
         raise HTTPException(status_code=400, detail="Esiste già un contratto attivo per questa unità")
     
     locatore = await db.soggetti.find_one({"id": data.locatore_id})
@@ -151,9 +161,23 @@ async def create_contratto(
     if not affittuario:
         raise HTTPException(status_code=404, detail="Affittuario non trovato")
     
+    data_scadenza = data.data_inizio + relativedelta(months=data.durata_mesi)
+    existing_contracts = await db.contratti.find(
+        {"unita_id": data.unita_id, "stato": "attivo"},
+        {"_id": 0, "id": 1, "codice_contratto": 1, "data_inizio": 1, "data_scadenza": 1}
+    ).to_list(100)
+    for existing_contract in existing_contracts:
+        existing_start = _parse_iso_date(existing_contract["data_inizio"])
+        existing_end = _parse_iso_date(existing_contract["data_scadenza"])
+        if _date_ranges_overlap(data.data_inizio, data_scadenza, existing_start, existing_end):
+            raise HTTPException(
+                status_code=400,
+                detail=f"Periodo non disponibile: si sovrappone al contratto {existing_contract.get('codice_contratto', existing_contract['id'])}"
+            )
+
     # Create contratto
     contratto = Contratto(**data.model_dump())
-    contratto.data_scadenza = data.data_inizio + relativedelta(months=data.durata_mesi)
+    contratto.data_scadenza = data_scadenza
     
     if not contratto.reminder_config:
         contratto.reminder_config = ReminderConfig()
@@ -172,14 +196,21 @@ async def create_contratto(
         await db.rate.insert_many(rate)
     
     # IMPORTANTE: Aggiorna stato unità a "locata"
-    await db.unita.update_one(
-        {"id": data.unita_id},
-        {"$set": {
-            "stato": "locata",
-            "contratto_attivo_id": contratto.id,
-            "affittuario_nome": affittuario["nome"] if affittuario else None
-        }}
-    )
+    today = date.today()
+    if data.data_inizio <= today < data_scadenza:
+        await db.unita.update_one(
+            {"id": data.unita_id},
+            {"$set": {
+                "stato": "locata",
+                "contratto_attivo_id": contratto.id,
+                "affittuario_nome": affittuario["nome"] if affittuario else None
+            }}
+        )
+    else:
+        await db.unita.update_one(
+            {"id": data.unita_id},
+            {"$set": {"contratto_futuro_id": contratto.id}}
+        )
     
     await log_audit(db, "contratti", contratto.id, "create", None, contratto_dict, current_user.id)
     

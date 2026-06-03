@@ -119,6 +119,11 @@ async def lifespan(app: FastAPI):
     await db.ai_chat_sessions.create_index("id", unique=True)
     await db.ai_chat_sessions.create_index("user_id")
     await db.ai_chat_messages.create_index("session_id")
+    await db.modelli_documento.create_index("id", unique=True)
+    await db.modelli_documento.create_index("tipo")
+    await db.import_incassi_log.create_index("id", unique=True)
+    await db.incassi_movimenti.create_index("key", unique=True)
+    await db.incassi_movimenti.create_index("rata_id")
     
     logger.info("Database indexes created")
     
@@ -167,6 +172,8 @@ from routers.audit import router as audit_router
 from routers.ape import router as ape_router
 from routers.ai import router as ai_router
 from routers.brief import router as brief_router
+from routers.modelli import router as modelli_router
+from routers.incassi import router as incassi_router
 
 api_router.include_router(auth_router)
 api_router.include_router(users_router)
@@ -189,6 +196,8 @@ api_router.include_router(audit_router)
 api_router.include_router(ape_router)
 api_router.include_router(ai_router)
 api_router.include_router(brief_router)
+api_router.include_router(modelli_router)
+api_router.include_router(incassi_router)
 
 
 # Health check endpoint

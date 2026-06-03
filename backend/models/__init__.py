@@ -14,3 +14,5 @@ from .intervento import InterventoManutenzione, InterventoCreate, PrioritaInterv
 from .notifica import Notifica, NotificaCreate, TipoNotifica, StatoNotifica
 from .audit import AuditLog, AuditLogCreate
 from .recesso import Recesso, RecessoCreate, StatoRecesso
+from .modello import ModelloDocumento, CompilaModelloRequest
+from .incasso import MovimentoIncasso, MatchIncasso, ImportIncassiPreview, ConfermaIncassoRequest

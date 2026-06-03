@@ -79,14 +79,14 @@ async def build_app_context(db: AsyncIOMotorDatabase, max_items: int = 30) -> st
             parts.append(f"- {i.get('codice')} | {i.get('titolo')} | {i.get('indirizzo')}")
 
     # Contratti attivi
-    contratti = await db.contratti.find({"stato": "attivo"}, {"_id": 0, "id": 1, "codice_contratto": 1, "data_inizio": 1, "data_fine": 1, "canone_mensile": 1}).limit(max_items).to_list(max_items)
+    contratti = await db.contratti.find({"stato": "attivo"}, {"_id": 0, "id": 1, "codice_contratto": 1, "data_inizio": 1, "data_scadenza": 1, "canone_importo": 1}).limit(max_items).to_list(max_items)
     if contratti:
         parts.append("\n[Contratti attivi]:")
         for c in contratti[:10]:
-            parts.append(f"- {c.get('codice_contratto')} | dal {c.get('data_inizio','?')} al {c.get('data_fine','?')} | canone €{c.get('canone_mensile','?')}")
+            parts.append(f"- {c.get('codice_contratto')} | dal {c.get('data_inizio','?')} al {c.get('data_scadenza','?')} | canone €{c.get('canone_importo','?')}")
 
     # Rate in ritardo
-    rate_ritardo = await db.rate.find({"stato": "in_ritardo"}, {"_id": 0, "contratto_id": 1, "scadenza": 1, "importo": 1}).limit(15).to_list(15)
+    rate_ritardo = await db.rate.find({"stato": "in_ritardo"}, {"_id": 0, "contratto_id": 1, "data_scadenza": 1, "importo": 1}).limit(15).to_list(15)
     if rate_ritardo:
         parts.append("\n[Rate in ritardo]:")
         for r in rate_ritardo[:10]:
@@ -112,10 +112,10 @@ async def build_entity_context(db: AsyncIOMotorDatabase, entita_tipo: str, entit
         c = await db.contratti.find_one({"id": entita_id}, {"_id": 0})
         if c:
             parts.append(f"Contratto {c.get('codice_contratto')}")
-            parts.append(f"Periodo: {c.get('data_inizio')} -> {c.get('data_fine')}")
-            parts.append(f"Canone: €{c.get('canone_mensile')}")
+            parts.append(f"Periodo: {c.get('data_inizio')} -> {c.get('data_scadenza')}")
+            parts.append(f"Canone: €{c.get('canone_importo')}")
             parts.append(f"Stato: {c.get('stato')}")
-            rate = await db.rate.find({"contratto_id": entita_id}, {"_id": 0, "scadenza": 1, "stato": 1, "importo": 1}).to_list(50)
+            rate = await db.rate.find({"contratto_id": entita_id}, {"_id": 0, "data_scadenza": 1, "stato": 1, "importo": 1}).to_list(50)
             parts.append(f"Rate ({len(rate)}):")
             for r in rate[:20]:
                 parts.append(f"  - {r.get('scadenza')} €{r.get('importo')} [{r.get('stato')}]")
@@ -148,9 +148,9 @@ async def build_entity_context(db: AsyncIOMotorDatabase, entita_tipo: str, entit
         if r:
             parts.append(f"Rata: scadenza {r.get('scadenza')} importo €{r.get('importo')} stato {r.get('stato')}")
             if r.get("contratto_id"):
-                c = await db.contratti.find_one({"id": r["contratto_id"]}, {"_id": 0, "codice_contratto": 1, "canone_mensile": 1})
+                c = await db.contratti.find_one({"id": r["contratto_id"]}, {"_id": 0, "codice_contratto": 1, "canone_importo": 1})
                 if c:
-                    parts.append(f"Contratto: {c.get('codice_contratto')} canone €{c.get('canone_mensile')}")
+                    parts.append(f"Contratto: {c.get('codice_contratto')} canone €{c.get('canone_importo')}")
 
     return "\n".join(parts)
 

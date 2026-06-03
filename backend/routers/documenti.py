@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, Form
 from typing import List, Optional
 from datetime import date
 import os
@@ -90,11 +90,17 @@ async def create_documento(
 @router.post("/upload")
 async def upload_documento(
     file: UploadFile = File(...),
-    livello: LivelloDocumento = Query(...),
-    ref_id: str = Query(...),
-    tipo: str = Query(...),
-    tag: Optional[str] = None,
-    expiry_date: Optional[date] = None,
+    livello: Optional[LivelloDocumento] = Form(None),
+    ref_id: Optional[str] = Form(None),
+    tipo: str = Form(...),
+    tag: Optional[str] = Form(None),
+    expiry_date: Optional[date] = Form(None),
+    data_scadenza: Optional[date] = Form(None),
+    descrizione: Optional[str] = Form(None),
+    immobile_id: Optional[str] = Form(None),
+    unita_id: Optional[str] = Form(None),
+    contratto_id: Optional[str] = Form(None),
+    soggetto_id: Optional[str] = Form(None),
     current_user: UserInDB = Depends(get_current_user),
     db: AsyncIOMotorDatabase = Depends(get_db)
 ):
@@ -106,6 +112,20 @@ async def upload_documento(
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail=f"File troppo grande. Max {MAX_FILE_SIZE // 1024 // 1024}MB")
+
+    if not livello or not ref_id:
+        if contratto_id:
+            livello, ref_id = LivelloDocumento.CONTRATTO, contratto_id
+        elif unita_id:
+            livello, ref_id = LivelloDocumento.UNITA, unita_id
+        elif immobile_id:
+            livello, ref_id = LivelloDocumento.IMMOBILE, immobile_id
+        elif soggetto_id:
+            livello, ref_id = LivelloDocumento.AFFITTUARIO, soggetto_id
+        else:
+            livello, ref_id = LivelloDocumento.GENERICO, "generale"
+
+    expiry = expiry_date or data_scadenza
     
     # Determine storage path based on livello and ref
     if livello == LivelloDocumento.IMMOBILE:
@@ -126,6 +146,8 @@ async def upload_documento(
         unita = await db.unita.find_one({"id": contratto["unita_id"]}, {"codice_unita": 1, "immobile_id": 1})
         immobile = await db.immobili.find_one({"id": unita["immobile_id"]}, {"codice": 1})
         storage_path = UPLOAD_DIR / "immobili" / immobile["codice"] / "unita" / unita["codice_unita"] / "contratti" / contratto["codice_contratto"]
+    elif livello == LivelloDocumento.GENERICO:
+        storage_path = UPLOAD_DIR / "documenti" / "generale"
     else:
         storage_path = UPLOAD_DIR / livello.value / ref_id
     
@@ -147,8 +169,8 @@ async def upload_documento(
         mime=file.content_type,
         uploaded_by=current_user.id,
         size_bytes=len(content),
-        tag=tag,
-        expiry_date=expiry_date
+        tag=tag or descrizione,
+        expiry_date=expiry
     )
     
     doc_dict = documento.model_dump()
