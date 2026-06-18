@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 
 class EstateWiseAPITester:
-    def __init__(self, base_url="https://energy-audit-demo-1.preview.emergentagent.com"):
+    def __init__(self, base_url="http://localhost:8001"):
         self.base_url = base_url
         self.token = None
         self.tests_run = 0

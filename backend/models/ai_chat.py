@@ -24,7 +24,7 @@ class AiConfig(BaseModel):
     # Ollama settings
     ollama_url: str = "http://ollama:11434"
     ollama_model: str = "llama3.2:3b"
-    # Emergent LLM settings (api_key letta da env EMERGENT_LLM_KEY)
+    # Modello specifico per il provider scelto
     external_model: str = "gpt-5.2"  # modello specifico per il provider scelto
     # Comportamento
     max_context_messages: int = 20

@@ -1,5 +1,5 @@
 """
-Servizio AI con switch tra Ollama (locale) e Emergent LLM (provider esterni).
+Servizio AI con switch tra Ollama (locale) e provider esterni (OpenAI/Anthropic/Gemini via LiteLLM).
 Espone un'unica interfaccia send_message() che ritorna la risposta dell'assistente.
 """
 
@@ -12,8 +12,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 logger = logging.getLogger(__name__)
 
 
-# Modelli supportati per provider esterni Emergent
-EXTERNAL_MODEL_MAP = {
+PROVIDER_MODEL_MAP = {
     "gpt-5.2": ("openai", "gpt-5.2"),
     "gpt-5.1": ("openai", "gpt-5.1"),
     "gpt-5": ("openai", "gpt-5"),
@@ -183,31 +182,32 @@ async def call_ollama(
             raise RuntimeError(f"Errore Ollama: {e.response.text}")
 
 
-async def call_emergent_llm(
+async def call_litellm(
     api_key: str,
-    session_id: str,
     system_message: str,
-    user_message_text: str,
+    messages: List[Dict[str, str]],
     model_key: str,
     temperature: float = 0.7
 ) -> str:
-    """Chiama Emergent LLM (gestisce openai/anthropic/gemini)."""
-    from emergentintegrations.llm.chat import LlmChat, UserMessage
+    """Chiama un provider esterno via LiteLLM (openai/anthropic/gemini)."""
+    from litellm import acompletion
 
-    if model_key not in EXTERNAL_MODEL_MAP:
-        raise ValueError(f"Modello esterno non supportato: {model_key}. Disponibili: {list(EXTERNAL_MODEL_MAP.keys())}")
+    if model_key not in PROVIDER_MODEL_MAP:
+        raise ValueError(f"Modello esterno non supportato: {model_key}. Disponibili: {list(PROVIDER_MODEL_MAP.keys())}")
 
-    provider, model_name = EXTERNAL_MODEL_MAP[model_key]
+    provider, model_name = PROVIDER_MODEL_MAP[model_key]
+    full_model = f"{provider}/{model_name}"
 
-    chat = LlmChat(
+    chat_messages = [{"role": "system", "content": system_message}] + messages
+
+    response = await acompletion(
+        model=full_model,
+        messages=chat_messages,
         api_key=api_key,
-        session_id=session_id,
-        system_message=system_message
-    ).with_model(provider, model_name)
-
-    msg = UserMessage(text=user_message_text)
-    response = await chat.send_message(msg)
-    return response if isinstance(response, str) else str(response)
+        temperature=temperature,
+        max_tokens=4096
+    )
+    return response.choices[0].message.content if response.choices else ""
 
 
 async def send_chat_message(
@@ -250,29 +250,22 @@ async def send_chat_message(
             "latency_ms": latency
         }
     else:
-        # Emergent LLM
-        api_key = os.environ.get("EMERGENT_LLM_KEY")
+        # Provider esterno (OpenAI/Anthropic/Gemini) via LiteLLM
+        api_key = os.environ.get("EXTERNAL_AI_KEY")
         if not api_key:
-            raise RuntimeError("EMERGENT_LLM_KEY non configurato. Imposta la chiave universale o passa a Ollama.")
+            raise RuntimeError("EXTERNAL_AI_KEY non configurato. Imposta la chiave API per provider esterni o passa a Ollama.")
 
-        external_model = config.get("external_model", "gpt-5.2")
+        external_model = config.get("external_model", "gpt-4o")
 
-        # LlmChat gestisce internamente la cronologia per session_id, ma includiamo
-        # il contesto dell'app come parte del system message.
-        # Per coerenza tra provider, passiamo la cronologia inline nel testo utente.
-        full_user = user_message
+        chat_messages = []
         if history:
-            history_text = "\n".join([
-                f"{'Utente' if m['role']=='user' else 'Assistente'}: {m['content']}"
-                for m in history[-6:]  # ultimi 6 turni
-            ])
-            full_user = f"[Cronologia recente]\n{history_text}\n\n[Messaggio attuale]\n{user_message}"
+            chat_messages.extend(history)
+        chat_messages.append({"role": "user", "content": user_message})
 
-        content = await call_emergent_llm(
+        content = await call_litellm(
             api_key=api_key,
-            session_id=session_id,
             system_message=system_msg,
-            user_message_text=full_user,
+            messages=chat_messages,
             model_key=external_model,
             temperature=temperature
         )
@@ -294,7 +287,7 @@ async def analyze_pdf_document(
 ) -> Dict[str, Any]:
     """
     Analizza un documento (PDF/immagine) usando il provider AI configurato.
-    Per Ollama usa estrazione testo locale. Per Emergent LLM usa file message.
+    Per Ollama usa estrazione testo locale. Per provider esterni usa chiamata API.
     """
     import time
     _ = await get_ai_config(db)  # caricamento config (riservato a usi futuri)

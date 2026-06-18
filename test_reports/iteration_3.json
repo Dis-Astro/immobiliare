@@ -74,5 +74,5 @@
   "seed_data_creation": "Tests create/delete TEST_ prefixed APE records and chat sessions. All cleanup via DELETE endpoints. AI provider was switched to openai+gpt-5.2 (persists in db.config).",
   "retest_needed": false,
   "should_main_agent_self_test": true,
-  "context_for_next_testing_agent": "AI provider currently set to openai+gpt-5.2 in DB (db.config key='ai_config'). EMERGENT_LLM_KEY working with gpt-5.2 (~1-3s latency). Backend tests in /app/tests/test_ape_ai.py serve as regression. Two backend bug fixes applied to /app/backend/routers/ape.py. /verbali/nuovo needs investigation - possibly waiting on data fetch that fails silently or rendering only skeleton."
+  "context_for_next_testing_agent": "AI provider currently set to openai+gpt-5.2 in DB (db.config key='ai_config'). External AI key working with gpt-5.2 (~1-3s latency). Backend tests in /app/tests/test_ape_ai.py serve as regression. Two backend bug fixes applied to /app/backend/routers/ape.py. /verbali/nuovo needs investigation - possibly waiting on data fetch that fails silently or rendering only skeleton."
 }

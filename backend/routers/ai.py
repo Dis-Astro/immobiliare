@@ -16,7 +16,7 @@ from models.user import UserInDB, UserRole
 from routers.auth import get_current_user, get_db
 from services.ai_provider import (
     get_ai_config, send_chat_message, build_app_context,
-    build_entity_context, analyze_pdf_document, EXTERNAL_MODEL_MAP
+    build_entity_context, analyze_pdf_document, PROVIDER_MODEL_MAP
 )
 from services.audit import log_audit
 
@@ -31,7 +31,7 @@ async def get_config(
     """Ottieni configurazione AI corrente."""
     config = await get_ai_config(db)
     # Lista modelli disponibili
-    config["available_external_models"] = list(EXTERNAL_MODEL_MAP.keys())
+    config["available_external_models"] = list(PROVIDER_MODEL_MAP.keys())
     return config
 
 

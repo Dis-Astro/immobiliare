@@ -403,7 +403,7 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=*
       - OLLAMA_URL=http://ollama:11434
-      - EMERGENT_LLM_KEY=\${EMERGENT_LLM_KEY:-}
+      - EXTERNAL_AI_KEY=\${EXTERNAL_AI_KEY:-}
       - SMTP_HOST=\${SMTP_HOST:-}
       - SMTP_PORT=\${SMTP_PORT:-587}
       - SMTP_USER=\${SMTP_USER:-}

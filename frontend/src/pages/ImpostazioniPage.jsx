@@ -149,13 +149,13 @@ export default function ImpostazioniPage() {
                       <div className="flex items-center gap-2"><Cpu className="w-4 h-4" /> Ollama (locale)</div>
                     </SelectItem>
                     <SelectItem value="openai">
-                      <div className="flex items-center gap-2"><Cloud className="w-4 h-4" /> OpenAI (Emergent LLM)</div>
+                      <div className="flex items-center gap-2"><Cloud className="w-4 h-4" /> OpenAI</div>
                     </SelectItem>
                     <SelectItem value="anthropic">
-                      <div className="flex items-center gap-2"><Cloud className="w-4 h-4" /> Anthropic Claude (Emergent LLM)</div>
+                      <div className="flex items-center gap-2"><Cloud className="w-4 h-4" /> Anthropic Claude</div>
                     </SelectItem>
                     <SelectItem value="gemini">
-                      <div className="flex items-center gap-2"><Cloud className="w-4 h-4" /> Google Gemini (Emergent LLM)</div>
+                      <div className="flex items-center gap-2"><Cloud className="w-4 h-4" /> Google Gemini</div>
                     </SelectItem>
                   </SelectContent>
                 </Select>
@@ -205,7 +205,7 @@ export default function ImpostazioniPage() {
                             .map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-slate-500 mt-1">Utilizza la chiave universale Emergent LLM. Verifica il credito disponibile nel pannello Emergent.</p>
+                      <p className="text-xs text-slate-500 mt-1">Richiede API key configurata nel backend (variabile d'ambiente).</p>
                     </div>
                   </CardContent>
                 </Card>

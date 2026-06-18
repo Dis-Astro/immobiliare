@@ -10,14 +10,14 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 - Audit log completo
 - Sistema notifiche con escalation (Celery + Redis + Beat)
 - **Modulo APE** (Attestato Prestazione Energetica) per ogni unità con scadenza modificabile, sostituzione file, classe energetica
-- **Integrazione AI** (Ollama locale + Emergent LLM esterni: GPT-5.2/Claude/Gemini) configurabile dall'utente
+- **Integrazione AI** (Ollama locale + provider esterni: OpenAI/Claude/Gemini via LiteLLM) configurabile dall'utente
 - **Autoinstaller Proxmox LXC** (`install.sh` one-shot, container privilegiato, nesting Docker)
 
 ## Stack Tecnico
 - **Frontend**: React + Vite + TailwindCSS + shadcn/ui + Zustand + React-Leaflet
 - **Backend**: FastAPI + MongoDB (motor) + Pydantic v2
 - **Async**: Celery + Redis (Beat per cron escalation notifiche)
-- **AI**: Emergent LLM Key (OpenAI/Anthropic/Gemini) + Ollama locale
+- **AI**: Ollama locale + provider esterni (OpenAI/Anthropic/Gemini via LiteLLM)
 - **Deploy**: Docker Compose stack su Proxmox LXC privilegiato (nesting, keyctl, apparmor unconfined)
 
 ## Implementato (Cronologia)
@@ -91,14 +91,14 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 │   │   ├── ai.py (NUOVO - 9 endpoint)
 │   │   └── ... (auth, immobili, unita, contratti, soggetti, rate, verbali, documenti, interventi, notifiche, dashboard, audit, reports)
 │   ├── services/
-│   │   ├── ai_provider.py (NUOVO - Ollama + Emergent LLM switch)
+│   │   ├── ai_provider.py (NUOVO - Ollama + LiteLLM switch)
 │   │   ├── audit.py
 │   │   └── notifications/
 │   ├── tasks/notifications.py
 │   ├── celery_app.py
 │   ├── server.py
 │   ├── Dockerfile (con WeasyPrint deps)
-│   └── requirements.txt (con emergentintegrations + pypdf)
+│   └── requirements.txt (con pypdf + litellm)
 ├── frontend/
 │   ├── src/pages/
 │   │   ├── ApePage.jsx (NUOVO)
@@ -155,7 +155,7 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 - Ruolo: supervisore
 
 ## File chiavi env
-- `/app/backend/.env`: MONGO_URL, DB_NAME, EMERGENT_LLM_KEY, OLLAMA_URL
+- `/app/backend/.env`: MONGO_URL, DB_NAME, EXTERNAL_AI_KEY, OLLAMA_URL
 - `/app/frontend/.env`: REACT_APP_BACKEND_URL
 
 ## Note tecniche
