@@ -11,7 +11,7 @@ API = f"{BASE_URL}/api/v1"
 def admin_token():
     r = requests.post(
         f"{API}/auth/login",
-        data={"username": "r.disante@impresacingoli.it", "password": "Cinguli26!!"},
+        data={"username": "r.disante@impresacingoli.it", "password": "Cingoli26!!"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=30,
     )
@@ -114,7 +114,7 @@ def test_change_password_happy_path(auth_headers):
     # Change to temp
     r = requests.post(
         f"{API}/auth/change-password",
-        json={"current_password": "Cinguli26!!", "new_password": temp},
+        json={"current_password": "Cingoli26!!", "new_password": temp},
         headers=auth_headers, timeout=15,
     )
     assert r.status_code == 200, r.text
@@ -133,7 +133,7 @@ def test_change_password_happy_path(auth_headers):
     # Restore original password
     r2 = requests.post(
         f"{API}/auth/change-password",
-        json={"current_password": temp, "new_password": "Cinguli26!!"},
+        json={"current_password": temp, "new_password": "Cingoli26!!"},
         headers={"Authorization": f"Bearer {new_token}"}, timeout=15,
     )
     assert r2.status_code == 200, f"Restore failed! {r2.text}"
@@ -141,7 +141,7 @@ def test_change_password_happy_path(auth_headers):
     # Verify original password works again
     final = requests.post(
         f"{API}/auth/login",
-        data={"username": "r.disante@impresacingoli.it", "password": "Cinguli26!!"},
+        data={"username": "r.disante@impresacingoli.it", "password": "Cingoli26!!"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=15,
     )

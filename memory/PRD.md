@@ -151,7 +151,7 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 
 ## Credenziali Admin (seed automatico)
 - Email: `r.disante@impresacingoli.it`
-- Password: `Cinguli26!!`
+- Password: `Cingoli26!!`
 - Ruolo: supervisore
 
 ## File chiavi env

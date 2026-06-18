@@ -32,7 +32,7 @@ class TestHealthAndAuth:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         assert response.status_code == 200, f"Login failed: {response.text}"
@@ -54,7 +54,7 @@ class TestHealthAndAuth:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         assert response.status_code == 200
@@ -87,7 +87,7 @@ class TestNotificheP0:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -167,7 +167,7 @@ class TestMappaP0:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -248,7 +248,7 @@ class TestContrattoWizardP0:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -340,7 +340,7 @@ class TestPagamentiP0:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -441,7 +441,7 @@ class TestDashboardAPIs:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -481,7 +481,7 @@ class TestImmobiliAPIs:
             f"{BASE_URL}/api/v1/auth/login",
             data={
                 "username": "r.disante@impresacingoli.it",
-                "password": "Cinguli26!!"
+                "password": "Cingoli26!!"
             }
         )
         token = response.json().get("access_token")

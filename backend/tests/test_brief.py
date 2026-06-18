@@ -11,7 +11,7 @@ BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstr
 API = f"{BASE_URL}/api/v1"
 
 ADMIN_EMAIL = "r.disante@impresacingoli.it"
-ADMIN_PWD = "Cinguli26!!"
+ADMIN_PWD = "Cingoli26!!"
 
 
 @pytest.fixture(scope="module")

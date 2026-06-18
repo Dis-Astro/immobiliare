@@ -2,7 +2,7 @@
 
 ## Admin Account (seed automatico all'avvio)
 - **Email**: `r.disante@impresacingoli.it`
-- **Password**: `Cinguli26!!`
+- **Password**: `Cingoli26!!`
 - **Ruolo**: supervisore
 - **Login endpoint**: `POST /api/v1/auth/login` (form-urlencoded, campo `username` = email)
 

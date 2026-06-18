@@ -39,7 +39,7 @@ async def seed_admin_user():
             "id": "admin-001",
             "email": "r.disante@impresacingoli.it",
             "nome": "Amministratore",
-            "password_hash": get_password_hash("Cinguli26!!"),
+            "password_hash": get_password_hash("Cingoli26!!"),
             "ruolo": "supervisore",
             "attivo": True,
             "must_change_password": False,

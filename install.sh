@@ -795,7 +795,7 @@ print_summary() {
     echo ""
     echo -e "  ${YELLOW}Default Login:${NC}"
     echo -e "    Email:    r.disante@impresacingoli.it"
-    echo -e "    Password: Cinguli26!!"
+    echo -e "    Password: Cingoli26!!"
     echo ""
     echo -e "  ${BLUE}Management Commands:${NC}"
     echo -e "    Enter container:  pct enter $CT_ID"

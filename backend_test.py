@@ -106,7 +106,7 @@ class EstateWiseAPITester:
         url = f"{self.base_url}/api/v1/auth/login"
         login_data = {
             "username": "r.disante@impresacingoli.it",
-            "password": "Cinguli26!!"
+            "password": "Cingoli26!!"
         }
         
         self.tests_run += 1
