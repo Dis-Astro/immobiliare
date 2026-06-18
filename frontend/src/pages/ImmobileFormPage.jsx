@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -30,14 +30,18 @@ const schema = z.object({
 
 export default function ImmobileFormPage() {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { request, loading } = useApi();
   const [geocoding, setGeocoding] = useState(false);
+  const [loadingData, setLoadingData] = useState(!!id);
+  const isEditing = !!id;
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
@@ -49,6 +53,35 @@ export default function ImmobileFormPage() {
       lon: null,
     },
   });
+
+  useEffect(() => {
+    if (!id) return;
+    (async () => {
+      try {
+        const data = await request('GET', `/immobili/${id}`);
+        reset({
+          codice: data.codice || '',
+          titolo: data.titolo || '',
+          indirizzo: data.indirizzo || '',
+          lat: data.lat ?? null,
+          lon: data.lon ?? null,
+          catastale_comune: data.catastale_comune || '',
+          foglio: data.foglio || '',
+          particella: data.particella || '',
+          subalterno: data.subalterno || '',
+          categoria: data.categoria || '',
+          rendita: data.rendita ?? null,
+          note: data.note || '',
+          foto_url: data.foto_url || '',
+        });
+      } catch (err) {
+        toast.error('Errore caricamento immobile');
+        navigate('/immobili');
+      } finally {
+        setLoadingData(false);
+      }
+    })();
+  }, [id]);
 
   const handleGeocode = async () => {
     const indirizzo = watch('indirizzo');
@@ -72,7 +105,6 @@ export default function ImmobileFormPage() {
 
   const onSubmit = async (data) => {
     try {
-      // Convert empty strings to null for numeric fields
       const payload = {
         ...data,
         lat: data.lat || null,
@@ -80,13 +112,27 @@ export default function ImmobileFormPage() {
         rendita: data.rendita ? parseFloat(data.rendita) : null,
       };
 
-      await request('POST', '/immobili', payload);
-      toast.success('Immobile creato con successo');
+      if (isEditing) {
+        await request('PUT', `/immobili/${id}`, payload);
+        toast.success('Immobile aggiornato con successo');
+      } else {
+        await request('POST', '/immobili', payload);
+        toast.success('Immobile creato con successo');
+      }
       navigate('/immobili');
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Errore durante la creazione');
+      toast.error(error.response?.data?.detail || 'Errore durante il salvataggio');
     }
   };
+
+  if (loadingData) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+        <span className="ml-3 text-slate-500">Caricamento immobile...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -95,8 +141,8 @@ export default function ImmobileFormPage() {
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold font-heading">Nuovo Immobile</h1>
-          <p className="text-slate-500">Inserisci i dati del nuovo immobile</p>
+          <h1 className="text-2xl font-bold font-heading">{isEditing ? 'Modifica Immobile' : 'Nuovo Immobile'}</h1>
+          <p className="text-slate-500">{isEditing ? 'Modifica i dati dell\'immobile' : 'Inserisci i dati del nuovo immobile'}</p>
         </div>
       </div>
 
@@ -277,14 +323,14 @@ export default function ImmobileFormPage() {
           <Button type="button" variant="outline" onClick={() => navigate(-1)}>
             Annulla
           </Button>
-          <Button type="submit" disabled={loading} data-testid="submit-immobile">
+          <Button type="submit" disabled={loading || loadingData} data-testid="submit-immobile">
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creazione...
+                {isEditing ? 'Salvataggio...' : 'Creazione...'}
               </>
             ) : (
-              'Crea Immobile'
+              isEditing ? 'Salva Modifiche' : 'Crea Immobile'
             )}
           </Button>
         </div>

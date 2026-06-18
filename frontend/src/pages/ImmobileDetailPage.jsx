@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
+import { useAuthStore } from '../stores';
 import 'leaflet/dist/leaflet.css';
 
 // Fix Leaflet marker
@@ -38,7 +39,9 @@ export default function ImmobileDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { request } = useApi();
+  const { user } = useAuthStore();
   const [downloading, setDownloading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   const { data: immobile, loading } = useFetch(`/immobili/${id}`);
   const { data: unita } = useFetch(`/unita?immobile_id=${id}`);
@@ -65,6 +68,20 @@ export default function ImmobileDetailPage() {
       toast.error('Errore nel download del PDF');
     } finally {
       setDownloading(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Eliminare l'immobile "${immobile?.titolo}"? L'operazione è irreversibile.`)) return;
+    setDeleting(true);
+    try {
+      await request('DELETE', `/immobili/${id}`);
+      toast.success('Immobile eliminato');
+      navigate('/immobili');
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Errore durante l\'eliminazione');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -110,6 +127,12 @@ export default function ImmobileDetailPage() {
             <Edit className="w-4 h-4 mr-2" />
             Modifica
           </Button>
+          {user?.ruolo === 'supervisore' && (
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              {deleting ? 'Eliminazione...' : 'Elimina'}
+            </Button>
+          )}
         </div>
       </div>
 
