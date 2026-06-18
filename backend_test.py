@@ -105,8 +105,8 @@ class EstateWiseAPITester:
         # Test login with admin credentials using form data
         url = f"{self.base_url}/api/v1/auth/login"
         login_data = {
-            "username": "admin@estatewise.it",
-            "password": "admin123"
+            "username": "r.disante@impresacingoli.it",
+            "password": "Cinguli26!!"
         }
         
         self.tests_run += 1

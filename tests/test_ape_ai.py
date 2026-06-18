@@ -1,7 +1,7 @@
 """
 Test suite for EstateWise APE + AI integration (iteration 3).
 Backend: /api/v1/ape/* and /api/v1/ai/*
-Credentials: admin@estatewise.it / admin123
+Credentials: r.disante@impresacingoli.it / Cinguli26!!
 """
 import os
 import io
@@ -18,7 +18,7 @@ API = f"{BASE_URL}/api/v1"
 def token():
     r = requests.post(
         f"{API}/auth/login",
-        data={"username": "admin@estatewise.it", "password": "admin123"},
+        data={"username": "r.disante@impresacingoli.it", "password": "Cinguli26!!"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=20,
     )

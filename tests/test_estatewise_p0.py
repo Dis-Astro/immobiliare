@@ -31,8 +31,8 @@ class TestHealthAndAuth:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         assert response.status_code == 200, f"Login failed: {response.text}"
@@ -53,8 +53,8 @@ class TestHealthAndAuth:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         assert response.status_code == 200
@@ -86,8 +86,8 @@ class TestNotificheP0:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -166,8 +166,8 @@ class TestMappaP0:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -247,8 +247,8 @@ class TestContrattoWizardP0:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -339,8 +339,8 @@ class TestPagamentiP0:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -440,8 +440,8 @@ class TestDashboardAPIs:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         token = response.json().get("access_token")
@@ -480,8 +480,8 @@ class TestImmobiliAPIs:
         response = session.post(
             f"{BASE_URL}/api/v1/auth/login",
             data={
-                "username": "admin@estatewise.it",
-                "password": "admin123"
+                "username": "r.disante@impresacingoli.it",
+                "password": "Cinguli26!!"
             }
         )
         token = response.json().get("access_token")

@@ -10,8 +10,8 @@ import requests
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "http://localhost:8001").rstrip("/")
 API = f"{BASE_URL}/api/v1"
 
-ADMIN_EMAIL = "admin@estatewise.it"
-ADMIN_PWD = "admin123"
+ADMIN_EMAIL = "r.disante@impresacingoli.it"
+ADMIN_PWD = "Cinguli26!!"
 
 
 @pytest.fixture(scope="module")

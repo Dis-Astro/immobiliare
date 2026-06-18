@@ -11,7 +11,7 @@ API = f"{BASE_URL}/api/v1"
 def admin_token():
     r = requests.post(
         f"{API}/auth/login",
-        data={"username": "admin@estatewise.it", "password": "admin123"},
+        data={"username": "r.disante@impresacingoli.it", "password": "Cinguli26!!"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=30,
     )
@@ -29,7 +29,7 @@ def test_get_me_baseline(auth_headers):
     r = requests.get(f"{API}/auth/me", headers=auth_headers, timeout=15)
     assert r.status_code == 200
     data = r.json()
-    assert data["email"] == "admin@estatewise.it"
+    assert data["email"] == "r.disante@impresacingoli.it"
     assert data["ruolo"] == "supervisore"
     assert "nome" in data
 
@@ -65,7 +65,7 @@ def test_put_me_email_already_in_use(auth_headers):
     if r.status_code != 200:
         pytest.skip(f"No /utenti endpoint to find a second user (got {r.status_code})")
     users = r.json()
-    other = next((u for u in users if u.get("email") and u["email"] != "admin@estatewise.it"), None)
+    other = next((u for u in users if u.get("email") and u["email"] != "r.disante@impresacingoli.it"), None)
     if not other:
         # try to create one
         create = requests.post(
@@ -93,7 +93,7 @@ def test_put_me_email_already_in_use(auth_headers):
 
 # Backend: PUT /auth/me - same email is allowed (no change)
 def test_put_me_same_email_ok(auth_headers):
-    r = requests.put(f"{API}/auth/me", json={"email": "admin@estatewise.it"}, headers=auth_headers, timeout=15)
+    r = requests.put(f"{API}/auth/me", json={"email": "r.disante@impresacingoli.it"}, headers=auth_headers, timeout=15)
     assert r.status_code == 200
 
 
@@ -114,7 +114,7 @@ def test_change_password_happy_path(auth_headers):
     # Change to temp
     r = requests.post(
         f"{API}/auth/change-password",
-        json={"current_password": "admin123", "new_password": temp},
+        json={"current_password": "Cinguli26!!", "new_password": temp},
         headers=auth_headers, timeout=15,
     )
     assert r.status_code == 200, r.text
@@ -123,29 +123,29 @@ def test_change_password_happy_path(auth_headers):
     # Verify new password works
     login_r = requests.post(
         f"{API}/auth/login",
-        data={"username": "admin@estatewise.it", "password": temp},
+        data={"username": "r.disante@impresacingoli.it", "password": temp},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=15,
     )
     assert login_r.status_code == 200, "Login with new password failed"
     new_token = login_r.json()["access_token"]
 
-    # Restore admin123
+    # Restore original password
     r2 = requests.post(
         f"{API}/auth/change-password",
-        json={"current_password": temp, "new_password": "admin123"},
+        json={"current_password": temp, "new_password": "Cinguli26!!"},
         headers={"Authorization": f"Bearer {new_token}"}, timeout=15,
     )
     assert r2.status_code == 200, f"Restore failed! {r2.text}"
 
-    # Verify admin123 works again
+    # Verify original password works again
     final = requests.post(
         f"{API}/auth/login",
-        data={"username": "admin@estatewise.it", "password": "admin123"},
+        data={"username": "r.disante@impresacingoli.it", "password": "Cinguli26!!"},
         headers={"Content-Type": "application/x-www-form-urlencoded"},
         timeout=15,
     )
-    assert final.status_code == 200, "FATAL: admin123 restore failed"
+    assert final.status_code == 200, "FATAL: original password restore failed"
 
 
 # Backend: report endpoints (CSV/Excel/PDF) for /report frontend testing prerequisites

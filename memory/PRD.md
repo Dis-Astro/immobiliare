@@ -150,8 +150,8 @@ Costruire un gestionale immobiliare completo per gestione affitti con:
 - Brief AI: ottimizzare `aggregate_brief_data` con `$lookup` o batch `$in` per evitare N+1 query MongoDB su grossi volumi
 
 ## Credenziali Admin (seed automatico)
-- Email: `admin@estatewise.it`
-- Password: `admin123`
+- Email: `r.disante@impresacingoli.it`
+- Password: `Cinguli26!!`
 - Ruolo: supervisore
 
 ## File chiavi env

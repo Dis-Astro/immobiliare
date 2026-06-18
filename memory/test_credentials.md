@@ -1,8 +1,8 @@
-# Test Credentials - EstateWise
+# Credenziali Amministratore - EstateWise
 
-## Admin Account (seed automatico)
-- **Email**: `admin@estatewise.it`
-- **Password**: `admin123`
+## Admin Account (seed automatico all'avvio)
+- **Email**: `r.disante@impresacingoli.it`
+- **Password**: `Cinguli26!!`
 - **Ruolo**: supervisore
 - **Login endpoint**: `POST /api/v1/auth/login` (form-urlencoded, campo `username` = email)
 
