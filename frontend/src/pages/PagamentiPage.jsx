@@ -3,7 +3,16 @@ import { useFetch, useApi } from '../hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { Skeleton } from '../components/ui/skeleton';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '../components/ui/dialog';
 import {
   Table,
   TableBody,
@@ -25,7 +34,9 @@ import {
   Clock,
   AlertTriangle,
   Euro,
-  Calendar
+  Calendar,
+  Plus,
+  Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
@@ -40,6 +51,19 @@ const statoColors = {
 export default function PagamentiPage() {
   const [stato, setStato] = useState('all');
   const [periodo, setPeriodo] = useState('all');
+  const [openNew, setOpenNew] = useState(false);
+  const [openImport, setOpenImport] = useState(false);
+  const [formData, setFormData] = useState({
+    contratto_id: '',
+    periodo: '',
+    importo: '',
+    data_scadenza: '',
+    data_incasso: '',
+    metodo: '',
+    riferimento: '',
+    note: '',
+  });
+  const [importFile, setImportFile] = useState(null);
   const { request } = useApi();
   
   const queryParams = new URLSearchParams();
@@ -48,6 +72,7 @@ export default function PagamentiPage() {
   
   const { data: rate, loading, refetch } = useFetch(`/rate?${queryParams.toString()}`);
   const { data: stats } = useFetch('/rate/stats');
+  const { data: contratti } = useFetch('/contratti');
 
   const handleIncassa = async (rataId) => {
     try {
@@ -57,6 +82,54 @@ export default function PagamentiPage() {
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Errore');
     }
+  };
+
+  const handleCreatePayment = async (e) => {
+    e.preventDefault();
+    if (!formData.contratto_id || !formData.periodo || !formData.importo) {
+      toast.error('Compila i campi obbligatori');
+      return;
+    }
+    try {
+      await request('POST', '/rate', {
+        contratto_id: formData.contratto_id,
+        periodo: formData.periodo,
+        importo: parseFloat(formData.importo),
+        data_scadenza: formData.data_scadenza || null,
+        data_incasso: formData.data_incasso || null,
+        metodo: formData.metodo || null,
+        riferimento: formData.riferimento || null,
+        note: formData.note || null,
+      });
+      toast.success('Pagamento registrato');
+      setOpenNew(false);
+      setFormData({ contratto_id: '', periodo: '', importo: '', data_scadenza: '', data_incasso: '', metodo: '', riferimento: '', note: '' });
+      refetch();
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Errore');
+    }
+  };
+
+  const handleImportCsv = async (e) => {
+    e.preventDefault();
+    if (!importFile) {
+      toast.error('Seleziona un file CSV');
+      return;
+    }
+    try {
+      const form = new FormData();
+      form.append('file', importFile);
+      const res = await request('POST', '/rate/parse-bank-statement', form);
+      toast.success(`Analizzati ${res.total} movimenti. ${res.rows.filter(r => r.affittuario_suggerito_id).length} associati.`);
+      setOpenImport(false);
+      setImportFile(null);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Errore importazione');
+    }
+  };
+
+  const resetForm = () => {
+    setFormData({ contratto_id: '', periodo: '', importo: '', data_scadenza: '', data_incasso: '', metodo: '', riferimento: '', note: '' });
   };
 
   // Generate last 12 months for filter
@@ -72,11 +145,161 @@ export default function PagamentiPage() {
     return months;
   };
 
+  const currentMonth = new Date().toISOString().slice(0, 7);
+
   return (
     <div className="space-y-6" data-testid="pagamenti-page">
-      <div>
-        <h1 className="text-2xl font-bold font-heading">Pagamenti</h1>
-        <p className="text-slate-500">Gestisci rate e incassi</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold font-heading">Pagamenti</h1>
+          <p className="text-slate-500">Gestisci rate e incassi</p>
+        </div>
+        <div className="flex gap-2">
+          {/* Importa CSV */}
+          <Dialog open={openImport} onOpenChange={(v) => { setOpenImport(v); if (!v) setImportFile(null); }}>
+            <DialogTrigger asChild>
+              <Button variant="outline">
+                <Upload className="w-4 h-4 mr-2" />
+                Importa CSV
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Importa Estratto Conto</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleImportCsv} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>File CSV</Label>
+                  <Input
+                    type="file"
+                    accept=".csv"
+                    onChange={(e) => setImportFile(e.target.files[0])}
+                  />
+                  <p className="text-xs text-slate-400">
+                    Colonne attese: data, descrizione, importo
+                  </p>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <Button type="button" variant="outline" onClick={() => setOpenImport(false)}>
+                    Annulla
+                  </Button>
+                  <Button type="submit">Analizza</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Nuovo Pagamento */}
+          <Dialog open={openNew} onOpenChange={(v) => { setOpenNew(v); if (!v) resetForm(); }}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="w-4 h-4 mr-2" />
+                Nuovo Pagamento
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Registra Pagamento Manuale</DialogTitle>
+              </DialogHeader>
+              <form onSubmit={handleCreatePayment} className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Contratto *</Label>
+                  <Select
+                    value={formData.contratto_id}
+                    onValueChange={(v) => setFormData(p => ({ ...p, contratto_id: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Seleziona contratto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contratti?.map(c => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.codice_contratto}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Periodo *</Label>
+                    <Input
+                      type="month"
+                      value={formData.periodo}
+                      onChange={(e) => setFormData(p => ({ ...p, periodo: e.target.value }))}
+                      placeholder="YYYY-MM"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Importo *</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={formData.importo}
+                      onChange={(e) => setFormData(p => ({ ...p, importo: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Data Scadenza</Label>
+                    <Input
+                      type="date"
+                      value={formData.data_scadenza}
+                      onChange={(e) => setFormData(p => ({ ...p, data_scadenza: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Data Incasso</Label>
+                    <Input
+                      type="date"
+                      value={formData.data_incasso}
+                      onChange={(e) => setFormData(p => ({ ...p, data_incasso: e.target.value }))}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Metodo</Label>
+                    <Select
+                      value={formData.metodo}
+                      onValueChange={(v) => setFormData(p => ({ ...p, metodo: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Seleziona" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="bonifico">Bonifico</SelectItem>
+                        <SelectItem value="contanti">Contanti</SelectItem>
+                        <SelectItem value="rid">RID</SelectItem>
+                        <SelectItem value="altro">Altro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Riferimento</Label>
+                    <Input
+                      value={formData.riferimento}
+                      onChange={(e) => setFormData(p => ({ ...p, riferimento: e.target.value }))}
+                      placeholder="es. causale"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button type="button" variant="outline" onClick={() => setOpenNew(false)}>
+                    Annulla
+                  </Button>
+                  <Button type="submit">Registra</Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats Cards */}

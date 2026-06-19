@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, ConfigDict
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, date, timezone
 from enum import Enum
 import uuid
@@ -28,6 +28,33 @@ class RataBase(BaseModel):
 
 class RataCreate(RataBase):
     pass
+
+
+class RataCreateManuale(BaseModel):
+    contratto_id: str
+    periodo: str  # YYYY-MM
+    importo: float
+    stato: StatoRata = StatoRata.DA_INCASSARE
+    data_scadenza: Optional[date] = None
+    data_incasso: Optional[date] = None
+    metodo: Optional[MetodoPagamento] = None
+    riferimento: Optional[str] = None
+    note: Optional[str] = None
+
+
+class ParsedBankRow(BaseModel):
+    riga: int
+    data: str
+    descrizione: str
+    importo: float
+    segno: str
+    affittuario_suggerito_id: Optional[str] = None
+    affittuario_suggerito_nome: Optional[str] = None
+    confidence: float = 0.0
+
+
+class BatchCreateRate(BaseModel):
+    rate: List[RataCreate]
 
 
 class RataUpdate(BaseModel):

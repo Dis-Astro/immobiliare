@@ -32,6 +32,9 @@ import CambioPasswordPage from './pages/CambioPasswordPage';
 import ContrattoDetailPage from './pages/ContrattoDetailPage';
 import SoggettoDetailPage from './pages/SoggettoDetailPage';
 import SoggettoFormPage from './pages/SoggettoFormPage';
+import UnitaFormPage from './pages/UnitaFormPage';
+import EventiCriticiPage from './pages/EventiCriticiPage';
+import UtentiPage from './pages/UtentiPage';
 
 // Protected Route component
 function ProtectedRoute({ children }) {
@@ -143,6 +146,14 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/unita/nuovo" 
+            element={
+              <ProtectedRoute>
+                <UnitaFormPage />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Contratti */}
           <Route 
@@ -219,7 +230,7 @@ function App() {
             path="/eventi-critici" 
             element={
               <ProtectedRoute>
-                <PlaceholderPage title="Eventi Critici" />
+                <EventiCriticiPage />
               </ProtectedRoute>
             } 
           />
@@ -306,6 +317,16 @@ function App() {
             element={
               <ProtectedRoute>
                 <AuditLogPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Utenti */}
+          <Route 
+            path="/utenti" 
+            element={
+              <ProtectedRoute>
+                <UtentiPage />
               </ProtectedRoute>
             } 
           />

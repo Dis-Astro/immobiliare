@@ -1,9 +1,10 @@
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from typing import List, Optional
 from datetime import date, datetime, timezone
+import csv, io
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from models.rata import Rata, RataCreate, RataUpdate, StatoRata, MetodoPagamento
+from models.rata import Rata, RataCreate, RataCreateManuale, RataUpdate, StatoRata, MetodoPagamento, ParsedBankRow, BatchCreateRate
 from models.user import UserInDB, UserRole
 from routers.auth import get_current_user, get_db
 from services.audit import log_audit
@@ -132,6 +133,151 @@ async def get_rate_stats(
         "da_incassare": da_incassare,
         "percentuale_incassato": round(incassato / totale * 100, 1) if totale > 0 else 0
     }
+
+
+@router.post("", response_model=Rata)
+async def create_rata(
+    data: RataCreateManuale,
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Crea manualmente una nuova rata/pagamento."""
+    if current_user.ruolo == UserRole.LETTURA:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    
+    contratto = await db.contratti.find_one({"id": data.contratto_id}, {"_id": 0})
+    if not contratto:
+        raise HTTPException(status_code=404, detail="Contratto non trovato")
+    
+    rata = Rata(
+        contratto_id=data.contratto_id,
+        periodo=data.periodo,
+        importo=data.importo,
+        stato=data.stato,
+        data_scadenza=data.data_scadenza,
+        data_incasso=data.data_incasso,
+        metodo=data.metodo,
+        riferimento=data.riferimento,
+        note=data.note,
+    )
+    rata_dict = rata.model_dump()
+    rata_dict["created_at"] = rata_dict["created_at"].isoformat()
+    if rata_dict.get("data_scadenza"):
+        rata_dict["data_scadenza"] = rata_dict["data_scadenza"].isoformat()
+    if rata_dict.get("data_incasso"):
+        rata_dict["data_incasso"] = rata_dict["data_incasso"].isoformat()
+    
+    await db.rate.insert_one(rata_dict)
+    await log_audit(db, "rate", rata.id, "create", None, rata_dict, current_user.id)
+    
+    return rata
+
+
+@router.post("/parse-bank-statement")
+async def parse_bank_statement(
+    file: UploadFile = File(...),
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Analizza CSV estratto conto bancario e associa a soggetti."""
+    if current_user.ruolo == UserRole.LETTURA:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    
+    if not file.filename.endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Sono ammessi solo file CSV")
+    
+    content = await file.read()
+    text = content.decode('utf-8-sig')
+    reader = csv.DictReader(io.StringIO(text))
+    
+    # Get all soggetti for matching
+    soggetti = await db.soggetti.find({}, {"_id": 0, "id": 1, "nome": 1}).to_list(1000)
+    
+    rows = []
+    for i, row in enumerate(reader):
+        # Try to extract date, description, amount from common CSV formats
+        data = row.get('data') or row.get('Data') or row.get('DATA') or ''
+        descrizione = row.get('descrizione') or row.get('Descrizione') or row.get('Descrizione operazione') or row.get('operazione') or ''
+        importo_str = row.get('importo') or row.get('Importo') or row.get('Importo €') or row.get('importo_euro') or ''
+        segno = '+'
+        
+        # Parse importo
+        importo = 0.0
+        if importo_str:
+            importo_str = importo_str.replace('€', '').replace(' ', '').replace('.', '').replace(',', '.').strip()
+            try:
+                importo = float(importo_str)
+            except ValueError:
+                pass
+        
+        # Negative amounts (prefixed with -)
+        if importo < 0:
+            segno = '-'
+            importo = abs(importo)
+        
+        # Try to match against soggetti by name
+        matched_id = None
+        matched_nome = None
+        best_score = 0
+        for s in soggetti:
+            score = 0
+            nome_parts = s['nome'].lower().split()
+            desc_lower = descrizione.lower()
+            for part in nome_parts:
+                if len(part) > 2 and part in desc_lower:
+                    score += 1
+            if score > best_score:
+                best_score = score
+                matched_id = s['id']
+                matched_nome = s['nome']
+        
+        confidence = min(best_score * 33, 100) if best_score > 0 else 0
+        
+        rows.append(ParsedBankRow(
+            riga=i+1,
+            data=data,
+            descrizione=descrizione,
+            importo=importo,
+            segno=segno,
+            affittuario_suggerito_id=matched_id,
+            affittuario_suggerito_nome=matched_nome,
+            confidence=confidence
+        ))
+    
+    return {"rows": rows, "total": len(rows)}
+
+
+@router.post("/batch-create", response_model=List[Rata])
+async def batch_create_rate(
+    data: BatchCreateRate,
+    current_user: UserInDB = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db)
+):
+    """Crea multiple rate in batch (usato dopo conferma import)."""
+    if current_user.ruolo == UserRole.LETTURA:
+        raise HTTPException(status_code=403, detail="Permessi insufficienti")
+    
+    created = []
+    for rata_data in data.rate:
+        contratto = await db.contratti.find_one({"id": rata_data.contratto_id}, {"_id": 0})
+        if not contratto:
+            continue
+        
+        rata = Rata(
+            contratto_id=rata_data.contratto_id,
+            periodo=rata_data.periodo,
+            importo=rata_data.importo,
+            stato=rata_data.stato,
+        )
+        rata_dict = rata.model_dump()
+        rata_dict["created_at"] = rata_dict["created_at"].isoformat()
+        rata_dict["data_scadenza"] = rata_dict["data_scadenza"].isoformat() if rata_dict.get("data_scadenza") else None
+        
+        await db.rate.insert_one(rata_dict)
+        await log_audit(db, "rate", rata.id, "create", None, rata_dict, current_user.id)
+        created.append(rata)
+    
+    return created
 
 
 @router.put("/{rata_id}", response_model=Rata)
