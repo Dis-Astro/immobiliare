@@ -34,6 +34,7 @@ import {
   Users,
   Eye,
   Edit,
+  Trash2,
   Star,
   Building,
   User
@@ -209,6 +210,13 @@ export default function SoggettiPage() {
                           <DropdownMenuItem onClick={() => navigate(`/soggetti/${soggetto.id}/modifica`)}>
                             <Edit className="w-4 h-4 mr-2" />
                             Modifica
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => handleDelete(soggetto.id)}
+                            className="text-red-600"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Elimina
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
