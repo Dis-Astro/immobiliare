@@ -20,7 +20,7 @@ import {
 import { toast } from 'sonner';
 import {
   ArrowLeft, FileText, Download, Building2, User, Calendar, Euro,
-  ClipboardList, FileCheck, Wallet, XCircle, Plus, ExternalLink, Loader2
+  ClipboardList, FileCheck, Wallet, XCircle, Plus, ExternalLink, Loader2, Sparkles
 } from 'lucide-react';
 
 const statoBadge = {
@@ -122,6 +122,11 @@ export default function ContrattoDetailPage() {
             {downloading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Download className="w-4 h-4 mr-2" />}
             Scarica PDF
           </Button>
+          <Link to={`/modelli-contratto?contrattoId=${id}`}>
+            <Button variant="outline" data-testid="btn-genera-da-modello">
+              <Sparkles className="w-4 h-4 mr-2" /> Genera da modello
+            </Button>
+          </Link>
           <Link to={`/verbali/nuovo/${id}`}>
             <Button data-testid="btn-new-verbale">
               <FileCheck className="w-4 h-4 mr-2" /> Nuovo verbale

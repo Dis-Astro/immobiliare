@@ -100,6 +100,9 @@ async def lifespan(app: FastAPI):
     await db.unita.create_index("id", unique=True)
     await db.contratti.create_index("id", unique=True)
     await db.contratti.create_index("codice_contratto", unique=True)
+    await db.modelli_contratto.create_index("id", unique=True)
+    await db.modelli_contratto.create_index("tipo")
+    await db.modelli_contratto.create_index("attivo")
     await db.rate.create_index("id", unique=True)
     await db.rate.create_index("contratto_id")
     await db.documenti.create_index("id", unique=True)
@@ -152,6 +155,7 @@ from routers.soggetti import router as soggetti_router
 from routers.immobili import router as immobili_router
 from routers.unita import router as unita_router
 from routers.contratti import router as contratti_router
+from routers.modelli_contratto import router as modelli_contratto_router
 from routers.rate import router as rate_router
 from routers.documenti import router as documenti_router
 from routers.valutazioni import router as valutazioni_router
@@ -174,6 +178,7 @@ api_router.include_router(soggetti_router)
 api_router.include_router(immobili_router)
 api_router.include_router(unita_router)
 api_router.include_router(contratti_router)
+api_router.include_router(modelli_contratto_router)
 api_router.include_router(rate_router)
 api_router.include_router(documenti_router)
 api_router.include_router(valutazioni_router)

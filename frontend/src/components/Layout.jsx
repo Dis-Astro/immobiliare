@@ -46,6 +46,7 @@ const navItems = [
   { icon: Map, label: 'Mappa', path: '/mappa', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: Home, label: 'Immobili', path: '/immobili', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: FileText, label: 'Contratti', path: '/contratti', roles: ['supervisore', 'gestore', 'lettura'] },
+  { icon: FileText, label: 'Modelli Contratto', path: '/modelli-contratto', roles: ['supervisore', 'gestore'] },
   { icon: Users, label: 'Soggetti', path: '/soggetti', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: CreditCard, label: 'Pagamenti', path: '/pagamenti', roles: ['supervisore', 'gestore', 'lettura'] },
   { icon: AlertTriangle, label: 'Eventi Critici', path: '/eventi-critici', roles: ['supervisore', 'gestore', 'lettura'] },

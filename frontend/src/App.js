@@ -30,6 +30,7 @@ import AuditLogPage from './pages/AuditLogPage';
 import ProfiloPage from './pages/ProfiloPage';
 import CambioPasswordPage from './pages/CambioPasswordPage';
 import ContrattoDetailPage from './pages/ContrattoDetailPage';
+import ModelliContrattoPage from './pages/ModelliContrattoPage';
 import SoggettoDetailPage from './pages/SoggettoDetailPage';
 import SoggettoFormPage from './pages/SoggettoFormPage';
 import UnitaFormPage from './pages/UnitaFormPage';
@@ -177,6 +178,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <ContrattoDetailPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/modelli-contratto" 
+            element={
+              <ProtectedRoute>
+                <ModelliContrattoPage />
               </ProtectedRoute>
             } 
           />

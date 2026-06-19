@@ -5,6 +5,7 @@ from .soggetti import router as soggetti_router
 from .immobili import router as immobili_router
 from .unita import router as unita_router
 from .contratti import router as contratti_router
+from .modelli_contratto import router as modelli_contratto_router
 from .rate import router as rate_router
 from .documenti import router as documenti_router
 from .valutazioni import router as valutazioni_router

@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useFetch, useApi } from '../hooks';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../components/ui/alert-dialog';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
@@ -44,7 +54,7 @@ export default function ImmobileDetailPage() {
   const [deleting, setDeleting] = useState(false);
   
   const { data: immobile, loading } = useFetch(`/immobili/${id}`);
-  const { data: unita } = useFetch(`/unita?immobile_id=${id}`);
+  const { data: unita, refetch: refetchUnita } = useFetch(`/unita?immobile_id=${id}`);
   const { data: spese } = useFetch(`/spese?immobile_id=${id}&limit=20`);
   const { data: documenti } = useFetch(`/documenti?livello=immobile&ref_id=${id}`);
 
@@ -317,6 +327,42 @@ export default function ImmobileDetailPage() {
                             Affittuario: <span className="font-medium">{u.affittuario_nome}</span>
                           </p>
                         )}
+                        <div className="mt-3 flex items-center justify-end gap-2">
+                          {user?.ruolo === 'supervisore' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="text-red-500 hover:text-red-700">
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Elimina unità?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    L'unità <strong>{u.codice_unita}</strong> verrà eliminata definitivamente.
+                                    Questa azione non può essere annullata.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={async () => {
+                                      try {
+                                        await request('DELETE', `/unita/${u.id}`);
+                                        toast.success('Unità eliminata');
+                                        refetchUnita();
+                                      } catch (err) {
+                                        toast.error(err.response?.data?.detail || 'Errore');
+                                      }
+                                    }}
+                                  >
+                                    Elimina
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
